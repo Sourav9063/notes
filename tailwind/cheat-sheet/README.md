@@ -5,20 +5,21 @@
 ## 📐 **Layout**
 | Category       | Utilities                          | Example Classes                  |
 |----------------|------------------------------------|-----------------------------------|
-| Display        | `block, inline, flex, grid, hidden`| `hidden md:flex`                 |
-| Positioning    | `static, fixed, absolute, relative`| `absolute top-4 right-0`         |
+| Display        | `block, inline, flex, grid, hidden, inline-flex`| `hidden md:flex`                 |
+| Positioning    | `static, fixed, absolute, relative, sticky` | `absolute top-4 right-0`         |
 | Flexbox        | `flex-row, flex-col, justify-*, items-*` | `justify-between items-center` |
 | Grid           | `grid-cols-*, grid-rows-*, gap-*` | `grid-cols-3 gap-4`             |
 | Z-Index        | `z-0` to `z-50`                   | `z-10`                          |
-| Overflow       | `overflow-auto, overflow-hidden`  | `overflow-x-scroll`              |
+| Overflow       | `overflow-auto, overflow-hidden, overflow-x-auto, overflow-y-auto` | `overflow-x-scroll`              |
+| Box Sizing     | `box-border, box-content`         | `box-border`                     |
 
 ---
 
 ## ↔️ **Spacing**
 | Type          | Utilities                          | Example                   |
 |---------------|------------------------------------|---------------------------|
-| Margin        | `m-* -mx-* mt-*` (0-96, auto)     | `mt-4 mx-auto`            |
-| Padding       | `p-* px-* pt-*` (0-96)            | `px-6 py-3`               |
+| Margin        | `m-* -mx-* mt-* -my-* mb-* ml-* mr-*` (0-96, auto)     | `mt-4 mx-auto`            |
+| Padding       | `p-* px-* pt-* pb-* pl-* pr-* py-*` (0-96)            | `px-6 py-3`               |
 | Space Between | `space-x-*, space-y-*` (0-96)     | `space-y-4`               |
 
 ---
@@ -31,6 +32,9 @@
 | Text Align     | `text-left, text-center, text-right` | `md:text-center`          |
 | Text Color     | `text-{color}-{shade}`             | `text-slate-700 dark:text-white` |
 | Line Height    | `leading-*` (3-10, none, tight)    | `leading-relaxed`           |
+| Font Family    | `font-sans, font-serif, font-mono` | `font-sans`                 |
+| Text Decoration| `underline, line-through, no-underline` | `underline`              |
+| Text Transform | `uppercase, lowercase, capitalize` | `uppercase`                |
 
 ---
 
@@ -40,24 +44,34 @@
 | BG Color       | `bg-{color}-{shade}`               | `bg-blue-600/50` (opacity)  |
 | Gradient       | `bg-gradient-{direction}`          | `bg-gradient-to-r from-cyan-500` |
 | Border Color   | `border-{color}-{shade}`           | `border-emerald-400`        |
+| Text Color     | `text-{color}-{shade}`             | `text-gray-800`             |
+| Border Radius  | `rounded-{size}`                   | `rounded-full`              |
+| Border Style   | `border-dashed, border-dotted, border-solid` | `border-dotted`         |
 
 ---
 
 ## 📏 **Sizing**
 | Property       | Utilities                          | Example                     |
 |----------------|------------------------------------|-----------------------------|
-| Width          | `w-*` (0-96, auto, screen, full)  | `w-32 md:w-1/2`            |
-| Height         | `h-*` (0-96, screen, full)        | `h-screen`                 |
-| Min/Max        | `min-w-*, max-w-*`                | `max-w-7xl`                |
+| Width          | `w-*` (0-96, auto, screen, full)   | `w-32 md:w-1/2`            |
+| Height         | `h-*` (0-96, screen, full)         | `h-screen`                 |
+| Min/Max        | `min-w-*, max-w-*`                 | `max-w-7xl`                |
+| Aspect Ratio   | `aspect-ratio-*`                   | `aspect-ratio-16/9`        |
+| Flex Basis     | `basis-*` (0-96)                   | `basis-1/2`                |
+| Object Fit     | `object-contain, object-cover`     | `object-cover`             |
+| Object Position| `object-center, object-top`        | `object-center`            |
 
 ---
 
 ## 🌀 **Effects**
 | Category       | Utilities                          | Example                     |
 |----------------|------------------------------------|-----------------------------|
-| Shadow         | `shadow-{size}`                   | `shadow-xl hover:shadow-2xl`|
+| Shadow         | `shadow-{size}`                    | `shadow-xl hover:shadow-2xl`|
 | Opacity        | `opacity-*` (0-100)               | `opacity-75`               |
 | Blend Mode     | `mix-blend-*`                     | `mix-blend-multiply`       |
+| Filter         | `filter, blur, brightness, contrast, grayscale, invert, saturate, sepia` | `filter blur-sm`            |
+| Outline        | `outline-{color}-{width}`          | `outline-blue-500`         |
+| Drop Shadow    | `drop-shadow-*`                    | `drop-shadow-lg`           |
 
 ---
 
@@ -65,17 +79,22 @@
 | Category       | Utilities                          | Example                     |
 |----------------|------------------------------------|-----------------------------|
 | Transition     | `transition-{property} duration-*` | `transition-colors duration-300` |
-| Animation      | `animate-{type}`                  | `animate-spin`              |
-| Transform      | `rotate-*, scale-*, translate-*`  | `hover:scale-105`           |
+| Animation      | `animate-{type}`                   | `animate-spin`              |
+| Transform      | `rotate-*, scale-*, translate-*`   | `hover:scale-105`           |
+| Transform Origin | `origin-top, origin-center`       | `origin-center`             |
+| Transition Delay | `delay-*`                         | `delay-200`                 |
+| Timing Function | `ease-in, ease-out, ease-in-out`   | `ease-in`                   |
 
 ---
 
 ## 🛠 **Borders**
 | Property       | Utilities                          | Example                     |
 |----------------|------------------------------------|-----------------------------|
-| Border Width   | `border-*` (0-8)                  | `border-2`                 |
+| Border Width   | `border-*` (0-8)                   | `border-2`                 |
 | Border Radius  | `rounded-{size}`                  | `rounded-full`             |
 | Border Style   | `border-dashed, border-dotted`    | `border-dotted`            |
+| Border Color   | `border-{color}-{shade}`           | `border-emerald-400`        |
+| Border Collapse| `border-collapse`                 | `border-collapse`          |
 
 ---
 
@@ -137,12 +156,12 @@
 
 ---
 
-**Scale Reference**:  
+## **Scale Reference**  
 - `1` = 0.25rem (4px)  
 - `4` = 1rem (16px)  
 - Full scale: 0, 0.5, 1-12 (increments of 1), 14, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 96  
 
-**Color Palette**:  
+## **Color Palette**  
 Slate, Gray, Zinc, Neutral, Stone, Red, Orange, Amber, Yellow, Lime, Green, Emerald, Teal, Cyan, Sky, Blue, Indigo, Violet, Purple, Fuchsia, Pink, Rose (50-900 shades)  
 
 [Tip] Use `@apply` in CSS for component extraction:
