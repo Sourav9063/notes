@@ -586,3 +586,187 @@ test('useCounter', async () => {
   expect(result.value.count).toBe(1);
 });
 ```
+Here's the expanded cheatsheet with added sections for slots, refs enhancements, and related features:
+
+---
+
+## 📤📥 Component Communication
+
+### Props
+```javascript
+const props = defineProps({
+  title: {
+    type: String,
+    required: true
+  }
+});
+```
+
+### Emits
+```javascript
+const emit = defineEmits(['submit']);
+function handleSubmit() {
+  emit('submit', { data: 123 });
+}
+```
+
+### v-model Binding
+- **Two-Way Binding**: Syntactic sugar for prop + emit
+- **Multiple v-models**: Bind multiple model values
+
+```vue
+<!-- CustomInput.vue -->
+<input
+  :value="modelValue"
+  @input="$emit('update:modelValue', $event.target.value)"
+>
+
+<!-- Parent Usage -->
+<CustomInput v-model="text" />
+<UserForm v-model:name="userName" v-model:email="userEmail" />
+```
+
+### Slots
+
+#### Default Slot
+```vue
+<!-- Child -->
+<slot>Fallback Content</slot>
+
+<!-- Parent -->
+<Child>Main Content</Child>
+```
+
+#### Named Slots
+```vue
+<!-- Child -->
+<slot name="header"></slot>
+
+<!-- Parent -->
+<template #header>Page Title</template>
+```
+
+#### Scoped Slots
+```vue
+<!-- Child -->
+<slot :item="item" name="item"></slot>
+
+<!-- Parent -->
+<template #item="{ item }">
+  <span>{{ item.name }}</span>
+</template>
+```
+
+### provide/inject
+```javascript
+// Ancestor
+provide('key', ref('value'));
+
+// Descendant
+const value = inject('key');
+```
+
+---
+
+## 🎛️ Template Refs & Directives
+
+### DOM Element Refs
+```vue
+<input ref="inputRef">
+<script setup>
+const inputRef = ref(null);
+</script>
+```
+
+### Component Refs
+```vue
+<Child ref="childRef" />
+<script setup>
+const childRef = ref(null);
+// Expose methods in child:
+defineExpose({ reset });
+</script>
+```
+
+### Dynamic v-for Refs
+```vue
+<div v-for="item in list" :ref="setItemRef"></div>
+<script setup>
+const itemRefs = ref([]);
+const setItemRef = el => { if (el) itemRefs.value.push(el) };
+</script>
+```
+
+### Function Refs
+```vue
+<input :ref="el => { dynamicRef = el }">
+```
+
+### Custom Directives
+```javascript
+const vFocus = {
+  mounted: el => el.focus()
+};
+```
+
+---
+
+## 🔄 Dynamic Components & Transitions
+
+### Dynamic Components
+```vue
+<component :is="currentComponent" />
+```
+
+### Transitions
+```vue
+<Transition name="fade">
+  <div v-if="show">Content</div>
+</Transition>
+
+<style>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+</style>
+```
+
+---
+
+## 🧩 Slot Data Flow Patterns
+
+### Slot Props Forwarding
+```vue
+<!-- Wrapper Component -->
+<template>
+  <Child v-slot="props">
+    <slot v-bind="props"/>
+  </Child>
+</template>
+```
+
+### Compound Components
+```vue
+<!-- Tabs Component -->
+<slot name="tab" :activeTab="currentTab"></slot>
+<slot name="panel" :activeTab="currentTab"></slot>
+```
+
+---
+
+## 🛠️ Advanced Ref Techniques
+
+### Ref Debouncing
+```javascript
+const debouncedRef = useDebouncedRef('', 300);
+```
+
+### DOM Measurements
+```javascript
+useElementSize(elementRef);
+```
+
+---
