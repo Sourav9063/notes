@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced JavaScript Object Techniques</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Visualization & Content Choices:
+        - Introduction: Text block. Goal: Set context.
+        - Property Descriptors: Text, code blocks with output. Goal: Explain core concepts.
+        - Getters and Setters: Text, code blocks with output. Goal: Explain dynamic properties.
+        - Prototype Chain: Text, code blocks with output. Goal: Explain JS inheritance.
+        - Object Integrity: Text, code blocks, HTML table for comparison. Goal: Explain immutability.
+        - Metaprogramming (Proxies/Reflect): Text, code blocks. Goal: Explain metaprogramming.
+        - Symbols: Text, code blocks. Goal: Explain unique keys.
+        - Advanced Creation/Manipulation: Text, code blocks. Goal: Show object techniques.
+        - Design Patterns: Text, code blocks. State Pattern (Fan Example) includes interactive HTML button and text display updated via Vanilla JS. Goal: Demonstrate patterns, make State pattern tangible.
+        - Conclusion: Text block. Goal: Summarize.
+        All code examples and outputs are from the source report. The Object Integrity Comparison is an HTML table. No Chart.js/Plotly.js used as content isn't chart-based. No SVG/Mermaid used.
+    -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        .content-section pre {
+            background-color: #2d3748; /* Tailwind gray-800 */
+            color: #e2e8f0; /* Tailwind gray-200 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        .content-section pre code .token.keyword { color: #9ae6b4; } /* Tailwind green-300 */
+        .content-section pre code .token.string { color: #f6ad55; } /* Tailwind orange-300 */
+        .content-section pre code .token.comment { color: #a0aec0; } /* Tailwind gray-500 */
+        .content-section pre code .token.number { color: #f6e05e; } /* Tailwind yellow-300 */
+        .content-section pre code .token.boolean { color: #f6e05e; }
+        .content-section pre code .token.function { color: #81e6d9; } /* Tailwind teal-300 */
+        .content-section pre code .token.operator { color: #f687b3; } /* Tailwind pink-400 */
+        .content-section pre code .token.punctuation { color: #cbd5e0; } /* Tailwind gray-400 */
+        .content-section pre code .token.class-name { color: #fbd38d; } /* Tailwind orange-200 */
+
+        .sidebar-link {
+            display: block;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+        }
+        .sidebar-link:hover {
+            background-color: #e2e8f0; /* gray-200 */
+            color: #1a202c; /* gray-900 */
+        }
+        .sidebar-link.active {
+            background-color: #4299e1; /* blue-500 */
+            color: white;
+            font-weight: 600;
+        }
+        .content-section h2 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.875rem; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
+        .content-section h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.5rem; font-weight: 600; }
+        .content-section h4 { margin-top: 1.25rem; margin-bottom: 0.5rem; font-size: 1.25rem; font-weight: 600; }
+        .content-section p { margin-bottom: 1rem; line-height: 1.75; }
+        .content-section ul { margin-left: 1.5rem; list-style-type: disc; margin-bottom: 1rem; }
+        .content-section li { margin-bottom: 0.5rem; }
+        .content-section table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        .content-section th, .content-section td { border: 1px solid #e2e8f0; padding: 0.75rem; text-align: left; }
+        .content-section th { background-color: #f7fafc; font-weight: 600; }
+        .console-output {
+            background-color: #1a202c; /* Tailwind gray-900 */
+            color: #a0aec0; /* Tailwind gray-500 */
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+        }
+        .interactive-fan button {
+            background-color: #38b2ac; /* Tailwind teal-500 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+        .interactive-fan button:hover {
+            background-color: #319795; /* Tailwind teal-600 */
+        }
+        #fanStatusOutput {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background-color: #edf2f7; /* Tailwind gray-200 */
+            border-radius: 0.375rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="bg-stone-100 text-gray-800">
+    <div class="flex min-h-screen">
+        <aside class="w-1/5 bg-white shadow-lg p-6 space-y-2 sticky top-0 h-screen overflow-y-auto">
+            <h1 class="text-2xl font-bold text-blue-600 mb-6 border-b pb-3">JS Object Techniques</h1>
+            <nav id="sidebarNav">
+                <a href="#introduction" class="sidebar-link active">Introduction</a>
+                <a href="#propertyDescriptors" class="sidebar-link">Property Descriptors</a>
+                <a href="#gettersSetters" class="sidebar-link">Getters and Setters</a>
+                <a href="#prototypeChain" class="sidebar-link">Prototype Chain</a>
+                <a href="#objectIntegrity" class="sidebar-link">Object Integrity</a>
+                <a href="#metaprogramming" class="sidebar-link">Metaprogramming</a>
+                <a href="#symbols" class="sidebar-link">Symbols</a>
+                <a href="#advancedCreation" class="sidebar-link">Advanced Creation</a>
+                <a href="#designPatterns" class="sidebar-link">Design Patterns</a>
+                <a href="#conclusion" class="sidebar-link">Conclusion</a>
+            </nav>
+        </aside>
+
+        <main class="w-4/5 p-8 overflow-y-auto bg-amber-50">
+            <div id="contentContainer" class="max-w-4xl mx-auto">
+                </div>
+        </main>
+    </div>
+
+    <script>
+        const content = {
+            introduction: `
+                <h2>Advanced JavaScript Objects: Unlocking Their Full Potential</h2>
+                <p>This section introduces the profound depth of features within JavaScript objects, moving beyond basic collections to explore sophisticated programming paradigms. It outlines the guide's aim to equip developers with knowledge for advanced object manipulation, granular property control, metaprogramming, unique identifiers, and practical design patterns for building robust and efficient applications.</p>
+                <p>JavaScript objects, while seemingly straightforward collections of key-value pairs, possess a profound depth of features that enable sophisticated programming paradigms and robust application development. Moving beyond basic object literal usage, understanding these advanced capabilities is essential for crafting efficient, maintainable, and high-performance JavaScript applications.</p>
+                <p>This comprehensive guide delves into the intricate world of advanced object manipulation, granular property control, metaprogramming techniques, unique identifiers, and practical design patterns. It aims to equip developers with the knowledge and practical code examples necessary to leverage JavaScript's object model to its fullest. Mastering these concepts allows for precise data control, powerful abstractions, and improved code organization, which are critical for building modern JavaScript frameworks and libraries.</p>
+            `,
+            propertyDescriptors: `
+                <h2>Mastering Property Descriptors: The Blueprint of Objects</h2>
+                <p>This section explains that every JavaScript object property is defined by a "property descriptor," which controls its behavior, mutability, visibility in enumeration, and configurability. Understanding these descriptors is fundamental for advanced object manipulation.</p>
+                
+                <h3>Data vs. Accessor Descriptors</h3>
+                <p>Property descriptors come in two forms: Data Descriptors (holding a direct value with attributes like <code>value</code>, <code>writable</code>, <code>enumerable</code>, <code>configurable</code>) and Accessor Descriptors (defined by getter/setter functions with attributes like <code>get</code>, <code>set</code>, <code>enumerable</code>, <code>configurable</code>). A property cannot have both data and accessor attributes.</p>
+
+                <h3><code>Object.defineProperty()</code>: Granular Control</h3>
+                <p><code>Object.defineProperty()</code> allows precise addition or modification of properties, controlling their descriptor attributes. Unlike simple assignment, properties added this way are, by default, not writable, not enumerable, and not configurable unless specified, offering more control for internal properties.</p>
+                <pre><code>const product = {};
+
+// 1. Creating a non-writable (read-only) data property
+Object.defineProperty(product, 'id', {
+  value: 'PROD-XYZ-123',
+  writable: false,
+  enumerable: true,
+  configurable: true,
+});
+// console.log(product.id);
+// try { product.id = 'NEW-ID'; } catch (e) { console.log(\`Error: \${e.message}\`); }
+
+// 2. Creating a non-enumerable property
+Object.defineProperty(product, 'internalCode', {
+  value: 'SECRET-CODE-456',
+  writable: false,
+  enumerable: false,
+  configurable: true,
+});
+// console.log(Object.keys(product));
+// console.log(product.internalCode);
+
+// 3. Creating a non-configurable property
+Object.defineProperty(product, 'version', {
+  value: '1.0.0',
+  writable: true,
+  enumerable: true,
+  configurable: false,
+});
+// console.log(product.version);
+// product.version = '1.0.1';
+// console.log(product.version);
+// try { delete product.version; } catch (e) { console.log(\`Error: \${e.message}\`); }
+// try { Object.defineProperty(product, 'version', { enumerable: false }); } catch (e) { console.log(\`Error: \${e.message}\`); }</code></pre>
+                <div class="console-output">PROD-XYZ-123
+Error: Cannot assign to read only property 'id' (in strict mode, otherwise fails silently)
+['id']
+SECRET-CODE-456
+1.0.0
+1.0.1
+Error: Cannot delete property 'version' (in strict mode, otherwise fails silently)
+Error: Cannot redefine property: version</div>
+
+                <h3><code>Object.getOwnPropertyDescriptor()</code>: Inspecting Properties</h3>
+                <p><code>Object.getOwnPropertyDescriptor()</code> retrieves the property descriptor for a specific "own property" of an object, invaluable for introspection without traversing the prototype chain.</p>
+                <pre><code>const userSettings = {
+  userName: 'devUser',
+  displayMode: 'dark'
+};
+Object.defineProperty(userSettings, 'internalId', {
+  value: 'uuid-1234',
+  writable: false,
+  enumerable: false,
+  configurable: false
+});
+
+// const userNameDesc = Object.getOwnPropertyDescriptor(userSettings, 'userName');
+// console.log('userName Descriptor:', userNameDesc);
+// const internalIdDesc = Object.getOwnPropertyDescriptor(userSettings, 'internalId');
+// console.log('internalId Descriptor:', internalIdDesc);
+// const nonExistentDesc = Object.getOwnPropertyDescriptor(userSettings, 'lastLogin');
+// console.log('Non-existent Descriptor:', nonExistentDesc);</code></pre>
+                <div class="console-output">userName Descriptor: { value: 'devUser', writable: true, enumerable: true, configurable: true }
+internalId Descriptor: { value: 'uuid-1234', writable: false, enumerable: false, configurable: false }
+Non-existent Descriptor: undefined</div>
+            `,
+            gettersSetters: `
+                <h2>Getters and Setters: Dynamic Property Access</h2>
+                <p>This section introduces getters and setters (accessor properties) as specialized functions that execute custom logic when a property is read or written. They enable computed properties, input validation, and side effects without direct data manipulation.</p>
+
+                <h3>Concise Syntax in Object Literals</h3>
+                <p>The most readable way to define getters/setters is using <code>get</code> and <code>set</code> keywords directly within object literals.</p>
+                <pre><code>const rectangle = {
+  width: 10,
+  height: 20,
+  get area() {
+    // console.log('Calculating area...');
+    return this.width * this.height;
+  },
+  set dimensions(size) {
+    if (size.width && size.height && size.width > 0 && size.height > 0) {
+      this.width = size.width;
+      this.height = size.height;
+      // console.log(\`Dimensions updated to \${this.width}x\${this.height}\`);
+    } else {
+      // console.error('Invalid dimensions provided.');
+    }
+  }
+};
+// console.log(rectangle.area);
+// rectangle.dimensions = { width: 15, height: 25 };
+// console.log(rectangle.area);
+// rectangle.dimensions = { width: -5, height: 10 };</code></pre>
+                <div class="console-output">Calculating area...
+200
+Dimensions updated to 15x25
+Calculating area...
+375
+Invalid dimensions provided.</div>
+
+                <h3>Advanced Control with <code>Object.defineProperty()</code></h3>
+                <p><code>Object.defineProperty()</code> is preferred for defining getters/setters on existing objects or when needing precise control over attributes like <code>enumerable</code> and <code>configurable</code>. This modern approach supersedes deprecated methods like <code>__defineGetter__</code>.</p>
+                <pre><code>const product = {
+  _price: 100
+};
+Object.defineProperty(product, 'price', {
+  get() {
+    // console.log('Getting price...');
+    return this._price;
+  },
+  set(newPrice) {
+    if (newPrice < 0) {
+      // console.error('Price cannot be negative.');
+      return;
+    }
+    // console.log('Setting price...');
+    this._price = newPrice;
+  },
+  enumerable: true,
+  configurable: false
+});
+// console.log(product.price);
+// product.price = 150;
+// console.log(product._price);
+// product.price = -10;</code></pre>
+                <div class="console-output">Getting price...
+100
+Setting price...
+150
+Price cannot be negative.</div>
+
+                <h3>Practical Applications: Validation, Computed Properties</h3>
+                <p>Getters and setters are fundamental for encapsulation, allowing controlled data access for validation (e.g., non-negative price), side effects (logging), or computed values (deriving diameter from radius), ensuring data integrity and maintaining object invariants.</p>
+                <ul>
+                    <li><strong>Validation:</strong> Enforce constraints on property assignments.</li>
+                    <li><strong>Computed Properties:</strong> Derive values dynamically.</li>
+                    <li><strong>Lazy Loading:</strong> Compute expensive values only when first accessed.</li>
+                    <li><strong>Data Transformation:</strong> Format data automatically on access/assignment.</li>
+                </ul>
+            `,
+            prototypeChain: `
+                <h2>The Intricacies of the Prototype Chain</h2>
+                <p>This section delves into JavaScript's prototypal inheritance, where objects inherit properties and methods directly from other objects (prototypes) via an internal link (<code>[[Prototype]]</code> or <code>__proto__</code>). This differs from class-based inheritance.</p>
+
+                <h3>Understanding Prototypal Inheritance</h3>
+                <p>When accessing a property, JavaScript searches the object itself, then its prototype, and so on, up the chain until found or the chain ends (<code>null</code>). The <code>this</code> keyword in an inherited method refers to the inheriting object, not the prototype where the method is defined, allowing shared methods to operate on instance-specific data.</p>
+                <pre><code>const animal = {
+  eats: true,
+  walk() {
+    // console.log(\`\${this.name || 'Animal'} walks.\`);
+  }
+};
+const rabbit = {
+  jumps: true,
+  name: 'Rabbit',
+  __proto__: animal
+};
+// rabbit.walk();
+// console.log(rabbit.eats);
+
+const longEar = {
+  earLength: 10,
+  name: 'Long Ear',
+  __proto__: rabbit
+};
+// longEar.walk();
+// console.log(longEar.eats);
+// console.log(longEar.jumps);</code></pre>
+                <div class="console-output">Rabbit walks.
+true
+Long Ear walks.
+true
+true</div>
+                <p>ES6 <code>class</code> syntax is largely syntactic sugar over this prototypal model. Understanding the prototype chain is crucial for debugging class-based code and leveraging JavaScript's object system fully.</p>
+
+                <h3><code>Object.getPrototypeOf()</code> and <code>Object.setPrototypeOf()</code></h3>
+                <p><code>Object.getPrototypeOf(obj)</code> is the standard method to retrieve an object's prototype. <code>Object.setPrototypeOf(obj, prototype)</code> sets or changes an object's prototype, allowing runtime mutation of the prototype chain, which should be used judiciously due to potential performance impacts.</p>
+                <pre><code>const base = { baseProp: 'I am base' };
+const child = {};
+Object.setPrototypeOf(child, base);
+// console.log(Object.getPrototypeOf(child));
+// console.log(child.baseProp);
+
+const newBase = { newBaseProp: 'I am new base' };
+Object.setPrototypeOf(child, newBase);
+// console.log(child.baseProp);
+// console.log(child.newBaseProp);</code></pre>
+                <div class="console-output">{ baseProp: 'I am base' }
+I am base
+undefined
+I am new base</div>
+
+                <h3><code>Object.create()</code>: Customizing Prototypes</h3>
+                <p><code>Object.create()</code> creates new objects with a specified prototype and properties, offering fine-grained control. Creating objects with <code>Object.create(null)</code> results in "dictionary objects" without inheriting from <code>Object.prototype</code>, making them immune to prototype pollution and useful for pure data maps.</p>
+                <pre><code>const personPrototype = {
+  greet() {
+    // console.log(\`Hello, my name is \${this.name}\`);
+  }
+};
+const john = Object.create(personPrototype);
+john.name = 'John';
+// john.greet();
+
+const cleanMap = Object.create(null);
+cleanMap.data = 'some data';
+// console.log(cleanMap.data);
+// console.log(cleanMap.toString);
+// console.log(Object.prototype.hasOwnProperty.call(cleanMap, 'data'));</code></pre>
+                <div class="console-output">Hello, my name is John
+some data
+undefined
+true</div>
+            `,
+            objectIntegrity: `
+                <h2>Ensuring Object Integrity: Immutability and Extensibility</h2>
+                <p>This section covers JavaScript's built-in methods for controlling object extensibility and mutability, offering various levels of "locking down" an object's state to ensure data integrity.</p>
+
+                <h3><code>Object.preventExtensions()</code>: Preventing Additions</h3>
+                <p>Marks an object as non-extensible, preventing new properties from being added and its prototype from being reassigned. Existing properties can still be deleted. Attempts to add new properties fail silently or throw a TypeError (strict mode). This state is irreversible.</p>
+                <pre><code>const config = {
+  api_key: 'abc',
+  debug_mode: true
+};
+Object.preventExtensions(config);
+// console.log(Object.isExtensible(config));
+config.new_prop = 'value';
+// console.log(config.new_prop);
+delete config.debug_mode;
+// console.log(config.debug_mode);</code></pre>
+                <div class="console-output">false
+undefined
+undefined</div>
+
+                <h3><code>Object.seal()</code>: Sealing Properties</h3>
+                <p>Seals an object, preventing new properties and making existing ones non-configurable (cannot be deleted or reconfigured). However, values of existing writable properties can still be changed.</p>
+                <pre><code>const settings = {
+  theme: 'dark',
+  volume: 50
+};
+Object.seal(settings);
+// console.log(Object.isSealed(settings));
+// console.log(Object.isExtensible(settings));
+settings.new_setting = 'value';
+// delete settings.theme;
+settings.volume = 75;
+// console.log(settings.volume);</code></pre>
+                <div class="console-output">true
+false
+75</div>
+
+                <h3><code>Object.freeze()</code>: Deep Immutability Considerations</h3>
+                <p>Freezes an object, preventing extensions, making existing properties non-writable and non-configurable, and preventing prototype reassignment. This is a <em>shallow freeze</em>; nested objects/arrays are not automatically frozen. For true immutability of complex structures, a recursive "deep freeze" function is needed.</p>
+                <pre><code>const appState = {
+  user: { name: 'Alice', id: 1 },
+  data: [10, 20]
+};
+Object.freeze(appState);
+// console.log(Object.isFrozen(appState));
+appState.version = '2.0';
+appState.user.name = 'Bob'; // Allowed
+appState.data.push(30);    // Allowed
+// console.log(appState.user.name);
+// console.log(appState.data);
+
+function deepFreeze(obj) {
+  const propNames = Reflect.ownKeys(obj);
+  for (const name of propNames) {
+    const value = obj[name];
+    if ((value && typeof value === 'object') || typeof value === 'function') {
+      deepFreeze(value);
+    }
+  }
+  return Object.freeze(obj);
+}
+const deepAppState = { user: { name: 'Alice', id: 1 }, data: [10, 20] };
+deepFreeze(deepAppState);
+// try { deepAppState.user.name = 'Bob'; } catch (e) { console.log(\`Error (user.name): \${e.message}\`); }
+// try { deepAppState.data.push(30); } catch (e) { console.log(\`Error (data.push): \${e.message}\`); }
+// console.log(deepAppState.user.name);
+// console.log(deepAppState.data);</code></pre>
+                <div class="console-output">true
+Bob
+[ 10, 20, 30 ]
+Error (user.name): Cannot assign to read only property 'name' (in strict mode)
+Error (data.push): Cannot add property 2, object is not extensible (in strict mode)
+Alice
+[ 10, 20 ]</div>
+                <p>Understanding the spectrum (<code>preventExtensions</code>, <code>seal</code>, <code>freeze</code>) helps select the right level of immutability, balancing flexibility with data integrity.</p>
+
+                <h3>Object Integrity Methods Comparison</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>New Properties?</th>
+                            <th>Existing Properties Deletable?</th>
+                            <th>Existing Data Properties Writable?</th>
+                            <th>Existing Properties Configurable?</th>
+                            <th>Affects Prototype Reassignment?</th>
+                            <th>Shallow/Deep?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>Object.preventExtensions()</code></td>
+                            <td>No</td>
+                            <td>Yes</td>
+                            <td>Yes</td>
+                            <td>Yes</td>
+                            <td>Yes (prevents)</td>
+                            <td>Shallow</td>
+                        </tr>
+                        <tr>
+                            <td><code>Object.seal()</code></td>
+                            <td>No</td>
+                            <td>No</td>
+                            <td>Yes</td>
+                            <td>No</td>
+                            <td>Yes (prevents)</td>
+                            <td>Shallow</td>
+                        </tr>
+                        <tr>
+                            <td><code>Object.freeze()</code></td>
+                            <td>No</td>
+                            <td>No</td>
+                            <td>No</td>
+                            <td>No</td>
+                            <td>Yes (prevents)</td>
+                            <td>Shallow</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `,
+            metaprogramming: `
+                <h2>Metaprogramming with Proxies and Reflect</h2>
+                <p>This section explores metaprogramming in JavaScript using <code>Proxy</code> and <code>Reflect</code> objects. These tools allow developers to intercept and define custom behaviors for fundamental language operations like property lookup, assignment, and function invocation.</p>
+                
+                <h3>Introduction to <code>Proxy</code> and <code>Reflect</code></h3>
+                <p>A <strong><code>Proxy</code></strong> object creates a stand-in (proxy) for another object (target), intercepting operations via a handler object containing "traps." Proxies can intercept internal object operations (<code>[[Get]]</code>, <code>[[Set]]</code>), enabling deep customization.</p>
+                <p><strong><code>Reflect</code></strong> is a built-in object providing methods for these interceptable operations, identical to proxy traps. It's used to forward default operations from a proxy handler to its target, allowing traps to augment rather than completely redefine behavior (the "intercept and then reflect" pattern).</p>
+                <p>Syntax: <code>new Proxy(target, handler)</code></p>
+
+                <h3>Common <code>Proxy</code> Traps</h3>
+                <h4><code>get(target, prop, receiver)</code>: Intercepts property reads.</h4>
+                <pre><code>const defaultHandler = {
+  get(target, name) {
+    return name in target ? Reflect.get(target, name) : 'N/A';
+  }
+};
+const userProfile = new Proxy({ name: 'Jane Doe' }, defaultHandler);
+// console.log(userProfile.name);
+// console.log(userProfile.email);</code></pre>
+                <div class="console-output">Jane Doe
+N/A</div>
+
+                <h4><code>set(target, prop, value, receiver)</code>: Intercepts property assignments.</h4>
+                <pre><code>const validationHandler = {
+  set(target, prop, value) {
+    if (prop === 'age') {
+      if (!Number.isInteger(value) || value < 0) {
+        throw new TypeError('Age must be a non-negative integer.');
+      }
+    }
+    Reflect.set(target, prop, value);
+    return true;
+  }
+};
+const person = new Proxy({}, validationHandler);
+person.name = 'Alice';
+person.age = 30;
+// console.log(person.age);
+// try { person.age = 'twenty'; } catch (e) { console.log(\`Error: \${e.message}\`); }</code></pre>
+                <div class="console-output">30
+Error: Age must be a non-negative integer.</div>
+
+                <h4><code>apply(target, thisArg, argumentsList)</code>: Intercepts function calls.</h4>
+                <pre><code>function sum(a, b) { return a + b; }
+const loggingHandler = {
+  apply(target, thisArg, argumentsList) {
+    // console.log(\`Calling function "\${target.name}" with arguments:\`, argumentsList);
+    return Reflect.apply(target, thisArg, argumentsList);
+  }
+};
+const proxiedSum = new Proxy(sum, loggingHandler);
+// console.log(proxiedSum(5, 3));</code></pre>
+                <div class="console-output">Calling function "sum" with arguments: [ 5, 3 ]
+8</div>
+
+                <h4><code>construct(target, argumentsList, newTarget)</code>: Intercepts <code>new</code> operator calls.</h4>
+                <pre><code>class Product {
+  constructor(name, price) { this.name = name; this.price = price; }
+}
+const constructorHandler = {
+  construct(target, argumentsList, newTarget) {
+    // console.log('Intercepting new Product() call...');
+    const instance = Reflect.construct(target, argumentsList, newTarget);
+    instance.createdAt = new Date().toLocaleTimeString(); // Simplified for consistent output
+    return instance;
+  }
+};
+const ProxiedProduct = new Proxy(Product, constructorHandler);
+const laptop = new ProxiedProduct('Laptop', 1200);
+// console.log(laptop); // Note: Date will vary</code></pre>
+                <div class="console-output">Intercepting new Product() call...
+Product { name: 'Laptop', price: 1200, createdAt: '(Current Time)' } </div>
+
+                <h3>Practical Use Cases</h3>
+                <p>Proxies are used for logging, validation, virtualization/mocking, access control, data binding, and memoization.</p>
+
+                <h3><code>Proxy.revocable()</code></h3>
+                <p>Creates a proxy that can be programmatically disabled via a <code>revoke</code> function. After revocation, any operation on the proxy throws a TypeError. Useful for dynamic access control, timed access, or temporary resources.</p>
+                <pre><code>const { proxy, revoke } = Proxy.revocable({ data: 'sensitive info' }, {
+  get(target, prop) {
+    // console.log(\`Accessing \${String(prop)}\`);
+    return Reflect.get(target, prop);
+  }
+});
+// console.log(proxy.data);
+revoke();
+// try { console.log(proxy.data); } catch (e) { console.log(\`Error: \${e.message}\`); }</code></pre>
+                <div class="console-output">Accessing data
+sensitive info
+Error: Cannot perform 'get' on a proxy that has been revoked</div>
+            `,
+            symbols: `
+                <h2>Symbols: Unique and Hidden Object Keys</h2>
+                <p>This section explains Symbols, a primitive data type from ES6 used to create unique property keys that don't collide with other keys and can be hidden from typical enumeration.</p>
+
+                <h3>Creating Unique Identifiers</h3>
+                <p>Each call to <code>Symbol()</code> returns a new, unique Symbol, even with the same descriptive string. This solves property name collision issues, ideal for internal state or extending objects safely.</p>
+                <pre><code>const uniqueId1 = Symbol('id');
+const uniqueId2 = Symbol('id');
+// console.log(uniqueId1 === uniqueId2);
+const user = { name: 'Alice', [uniqueId1]: 123 };
+// console.log(user[uniqueId1]);</code></pre>
+                <div class="console-output">false
+123</div>
+
+                <h3>Global Symbol Registry (<code>Symbol.for</code>, <code>Symbol.keyFor</code>)</h3>
+                <p><code>Symbol.for(key)</code> retrieves/creates a Symbol from/in a global registry, allowing Symbols to be shared across different parts of an application or realms. <code>Symbol.keyFor(symbol)</code> returns the string key for a globally registered Symbol.</p>
+                <pre><code>const globalSymbol1 = Symbol.for('app.config');
+const globalSymbol2 = Symbol.for('app.config');
+// console.log(globalSymbol1 === globalSymbol2);
+const anotherLocalSymbol = Symbol('app.config');
+// console.log(globalSymbol1 === anotherLocalSymbol);
+// console.log(Symbol.keyFor(globalSymbol1));
+// console.log(Symbol.keyFor(anotherLocalSymbol));</code></pre>
+                <div class="console-output">true
+false
+app.config
+undefined</div>
+
+                <h3>Using Symbols for Non-Colliding Properties</h3>
+                <p>Symbols are great for "private-ish" internal properties. They are not enumerated by <code>for...in</code> or <code>Object.keys()</code> (weak encapsulation), and allow safe extension of built-ins. Well-known Symbols (e.g., <code>Symbol.iterator</code>) customize core language behaviors.</p>
+                <pre><code>const myObject = { name: 'Test Object', data: 10 };
+const internalId = Symbol('internalId');
+myObject[internalId] = 'unique-internal-value';
+// console.log(Object.keys(myObject));
+// for (const key in myObject) { console.log(key); }
+// console.log(myObject[internalId]);</code></pre>
+                <div class="console-output">[ 'name', 'data' ]
+name
+data
+unique-internal-value</div>
+
+                <h3><code>Object.getOwnPropertySymbols()</code></h3>
+                <p>Returns an array of all Symbol properties found directly on an object, as they are not returned by <code>Object.keys()</code> or <code>Object.getOwnPropertyNames()</code>.</p>
+                <pre><code>const myObjectSym = { name: 'Test Object' };
+const internalIdSym = Symbol('internalId');
+const debugFlagSym = Symbol('debugFlag');
+myObjectSym[internalIdSym] = 'abc-123';
+myObjectSym[debugFlagSym] = true;
+const symbolsArray = Object.getOwnPropertySymbols(myObjectSym);
+// console.log(symbolsArray); // Shows Symbol descriptions
+// console.log(symbolsArray.length);
+// console.log(myObjectSym[symbolsArray[0]]); // Accessing by the actual symbol</code></pre>
+                <div class="console-output">[ Symbol(internalId), Symbol(debugFlag) ]
+2
+abc-123</div>
+            `,
+            advancedCreation: `
+                <h2>Advanced Object Creation and Manipulation</h2>
+                <p>This section explores various mechanisms beyond simple object literals for creating and manipulating objects, including constructor functions, ES6 classes, and techniques for copying and transforming data structures.</p>
+
+                <h3>Constructor Functions and ES6 Classes</h3>
+                <p><strong>Constructor Functions:</strong> The traditional way to create multiple object instances with shared properties/methods, invoked with <code>new</code>. <code>this</code> refers to the new instance.</p>
+                <pre><code>function Car(make, model, year) {
+  this.make = make; this.model = model; this.year = year;
+  this.display = function() { /* console.log(\`\${this.year} \${this.make} \${this.model}\`); */ };
+}
+const myCar = new Car('Honda', 'Civic', 2020);
+// myCar.display();</code></pre>
+                <div class="console-output">2020 Honda Civic</div>
+                <p><strong>ES6 Classes:</strong> Cleaner, more structured syntax for object blueprints, essentially syntactic sugar over constructor functions and prototypal inheritance.</p>
+                <pre><code>class Vehicle {
+  constructor(make, model) { this.make = make; this.model = model; }
+  displayInfo() { /* console.log(\`Vehicle: \${this.make} \${this.model}\`); */ }
+}
+const myVehicle = new Vehicle('Toyota', 'Camry');
+// myVehicle.displayInfo();</code></pre>
+                <div class="console-output">Vehicle: Toyota Camry</div>
+
+                <h3>Shallow vs. Deep Copying</h3>
+                <p>Objects are reference types; assignment creates a reference, not a copy. Copying is vital to avoid unintended side effects.</p>
+                <p><strong>Shallow Copy:</strong> Copies only top-level properties. Nested objects/arrays are copied by reference (changes affect original). Techniques: <code>Object.assign({}, source)</code>, spread operator <code>{...source}</code>.</p>
+                <pre><code>const originalShallow = { a: 1, nested: { b: 2 } };
+const shallowCopyAssign = Object.assign({}, originalShallow);
+const shallowCopySpread = {...originalShallow };
+shallowCopyAssign.nested.b = 3;
+// console.log('Original (after assign):', originalShallow.nested.b);
+shallowCopySpread.nested.b = 4;
+// console.log('Original (after spread):', originalShallow.nested.b);</code></pre>
+                <div class="console-output">Original (after assign): 3
+Original (after spread): 4</div>
+                <p><strong>Deep Copy:</strong> Creates a completely independent copy, including nested structures. <code>JSON.parse(JSON.stringify(obj))</code> is simple but limited (can't handle functions, Dates, undefined, Symbols, BigInts, circular refs). Libraries (e.g., Lodash <code>_.cloneDeep()</code>) are better for complex cases.</p>
+                <pre><code>const originalDeep = { a: 1, nested: { b: 2 }, func: () => {}, date: new Date() };
+const deepCopyJSON = JSON.parse(JSON.stringify(originalDeep));
+deepCopyJSON.nested.b = 5;
+// console.log('Original nested.b:', originalDeep.nested.b); // Should remain 4 from previous example if run sequentially, or 2 if isolated
+// console.log('Deep copy func:', deepCopyJSON.func);
+// console.log('Deep copy date:', deepCopyJSON.date); // String representation</code></pre>
+                <div class="console-output">Original nested.b: 4 
+Deep copy func: undefined
+Deep copy date: (String representation of current date)</div>
+
+                <h3><code>Object.fromEntries()</code>: Transforming Data</h3>
+                <p>Transforms a list of key-value pairs into a new object, the reverse of <code>Object.entries()</code>. Can create symbol-keyed properties. Combined with array methods, it enables powerful functional object transformations.</p>
+                <pre><code>const map = new Map([['name', 'Alice'], ['age', 30]]);
+const objFromMap = Object.fromEntries(map);
+// console.log(objFromMap);
+
+const arrOfPairs = [['city', 'New York'], ['zip', '10001']];
+const objFromArray = Object.fromEntries(arrOfPairs);
+// console.log(objFromArray);
+
+const productPrices = { laptop: 1200, keyboard: 75, mouse: 25 };
+const doubledPrices = Object.fromEntries(
+  Object.entries(productPrices).map(([key, value]) => [key, value * 2])
+);
+// console.log(doubledPrices);</code></pre>
+                <div class="console-output">{ name: 'Alice', age: 30 }
+{ city: 'New York', zip: '10001' }
+{ laptop: 2400, keyboard: 150, mouse: 50 }</div>
+
+                <h3>Destructuring Objects: Advanced Techniques and Tips</h3>
+                <p>ES6 feature to extract values from objects into variables concisely. Supports renaming, default values, nested destructuring, rest operator (<code>...</code>), and use in function parameters for cleaner code.</p>
+                <pre><code>const userDestructure = {
+  id: 1, firstName: 'John', lastName: 'Doe',
+  address: { city: 'Anytown', zip: '12345' },
+  preferences: { theme: 'dark' }
+};
+const {
+  firstName: name, age = 30,
+  address: { city },
+  preferences: { language = 'en' }
+} = userDestructure;
+// console.log(name, age, city, language);
+
+const { id, ...details } = userDestructure;
+// console.log('ID:', id);
+// console.log('Details:', details);
+
+function printUserDetails({ firstName, lastName, address: { city: userCity } }) {
+  // console.log(\`User: \${firstName} \${lastName}, from \${userCity}\`);
+}
+// printUserDetails(userDestructure);</code></pre>
+                <div class="console-output">John 30 Anytown en
+ID: 1
+Details: { firstName: 'John', lastName: 'Doe', address: { city: 'Anytown', zip: '12345' }, preferences: { theme: 'dark' } }
+User: John Doe, from Anytown</div>
+            `,
+            designPatterns: `
+                <h2>Object-Oriented Design Patterns in Practice</h2>
+                <p>This section demonstrates how JavaScript's flexible object model supports various object-oriented design patterns, providing proven solutions for common software design problems to improve code structure, maintainability, and reusability.</p>
+
+                <h3>The Module Pattern: Encapsulation and Private State</h3>
+                <p>Leverages closures to encapsulate "private" variables and methods, exposing only a public interface. This reduces global namespace pollution and manages complexity by creating isolated, self-contained code units. Essential before ES Modules for private scope, its encapsulation principles remain relevant.</p>
+                <pre><code>const Calculator = (function() {
+  let result = 0; // Private
+  function add(num) { result += num; return result; }
+  function subtract(num) { result -= num; return result; }
+  return { // Public interface
+    add: add,
+    subtract: subtract,
+    getCurrentResult: function() { return result; }
+  };
+})();
+// console.log(Calculator.add(5));
+// console.log(Calculator.subtract(2));
+// console.log(Calculator.getCurrentResult());
+// console.log(Calculator.result);</code></pre>
+                <div class="console-output">5
+3
+3
+undefined</div>
+
+                <h3>The Mixin Pattern: Composition over Inheritance</h3>
+                <p>Adds reusable functionality to objects/classes without traditional inheritance, addressing JavaScript's single inheritance limitation. Behaviors are "mixed in" from multiple sources (often using <code>Object.assign()</code>), favoring composition for flexibility and avoiding fragile base class issues.</p>
+                <pre><code>const CanFly = { fly() { /* console.log(\`\${this.name} is flying!\`); */ } };
+const CanSwim = { swim() { /* console.log(\`\${this.name} is swimming!\`); */ } };
+class Bird { constructor(name) { this.name = name; } }
+Object.assign(Bird.prototype, CanFly);
+const eagle = new Bird("Eagle");
+// eagle.fly();
+Object.assign(Bird.prototype, CanSwim); // Mixin another behavior
+// eagle.swim(); // Eagle can now also swim
+const penguin = new Bird("Penguin"); // New bird instance also gets mixed-in methods
+// penguin.fly();
+// penguin.swim();
+</code></pre>
+                <div class="console-output">Eagle is flying!
+Eagle is swimming!
+Penguin is flying!
+Penguin is swimming!</div>
+
+                <h3>The State Pattern: Managing Complex Behavior</h3>
+                <p>Allows an object to alter its behavior when its internal state changes, appearing as if it changed its class. It manages complex conditional logic by delegating state-specific behavior to separate State objects, promoting cleaner code and adhering to SRP and OCP.</p>
+                <p><strong>Interactive Fan Example:</strong> Click the button to cycle through fan states.</p>
+                <div class="interactive-fan p-4 border rounded-md bg-slate-50">
+                    <button id="fanButton" class="mb-2">Click to Change Fan State</button>
+                    <div id="fanStatusOutput">Fan is currently OFF.</div>
+                </div>
+                <pre><code>// State Interface (implicitly defined)
+class FanState {
+  constructor(fan) { this.fan = fan; }
+  clickButton() { throw new Error("Not implemented"); }
+}
+// Concrete States
+class OffFanState extends FanState {
+  clickButton() {
+    // console.log("Fan: Turning on to Low Speed.");
+    this.fan.logStateChange("Fan: Turning on to Low Speed.");
+    this.fan.setState(this.fan.lowSpeedState);
+  }
+}
+class LowSpeedFanState extends FanState {
+  clickButton() {
+    // console.log("Fan: Increasing to Medium Speed.");
+    this.fan.logStateChange("Fan: Increasing to Medium Speed.");
+    this.fan.setState(this.fan.mediumSpeedState);
+  }
+}
+class MediumSpeedFanState extends FanState {
+  clickButton() {
+    // console.log("Fan: Increasing to High Speed.");
+    this.fan.logStateChange("Fan: Increasing to High Speed.");
+    this.fan.setState(this.fan.highSpeedState);
+  }
+}
+class HighSpeedFanState extends FanState {
+  clickButton() {
+    // console.log("Fan: Turning off.");
+    this.fan.logStateChange("Fan: Turning off.");
+    this.fan.setState(this.fan.offFanState);
+  }
+}
+// Context
+class Fan {
+  constructor(outputElement) {
+    this.outputElement = outputElement;
+    this.offFanState = new OffFanState(this);
+    this.lowSpeedState = new LowSpeedFanState(this);
+    this.mediumSpeedState = new MediumSpeedFanState(this);
+    this.highSpeedState = new HighSpeedFanState(this);
+    this.presentState = this.offFanState;
+    this.logStateChange("Fan is currently OFF."); // Initial state log
+  }
+  setState(newState) { this.presentState = newState; }
+  clickButton() { this.presentState.clickButton(); }
+  logStateChange(message) {
+    if (this.outputElement) {
+        this.outputElement.textContent = message;
+    }
+    // console.log(message); // For debugging if needed
+  }
+}
+// const myFan = new Fan(); // Will be initialized in the script for interactivity
+// myFan.clickButton(); // Fan: Turning on to Low Speed.
+// myFan.clickButton(); // Fan: Increasing to Medium Speed.
+// ...and so on.
+</code></pre>
+                <div class="console-output">
+                (Interactive output will appear above in the styled 'fanStatusOutput' div)
+                </div>
+            `,
+            conclusion: `
+                <h2>Conclusion: Beyond the Basics</h2>
+                <p>This concluding section recaps the advanced JavaScript object concepts covered, emphasizing their profound capabilities beyond simple data storage. It highlights granular property control, dynamic access, prototypal inheritance, metaprogramming, object integrity methods, Symbols, and design patterns as tools for creating sophisticated, efficient, and resilient applications. Mastering these aspects is crucial for navigating the evolving JavaScript ecosystem and contributing to innovation.</p>
+                <p>This exploration of advanced JavaScript object concepts demonstrates the profound capabilities inherent in the language's object model. From granular control over property behavior using <code>Object.defineProperty()</code> and dynamic access with getters and setters, to the foundational understanding of prototypal inheritance and the powerful metaprogramming afforded by <code>Proxy</code> and <code>Reflect</code>, JavaScript objects offer far more than simple data storage.</p>
+                <p>The ability to enforce object integrity with methods like <code>Object.preventExtensions()</code>, <code>Object.seal()</code>, and <code>Object.freeze()</code> provides developers with essential tools for managing mutability and ensuring data consistency. Furthermore, the strategic use of Symbols as unique, non-colliding property keys enables robust encapsulation and flexible extension of objects. Finally, the practical application of object-oriented design patterns such as the Module, Mixin, and State patterns illustrates how these advanced features translate into structured, maintainable, and scalable codebases.</p>
+                <p>Mastering these advanced aspects of JavaScript objects empowers developers to move beyond conventional scripting, enabling the creation of more sophisticated, efficient, and resilient applications. The JavaScript ecosystem is constantly evolving, and a deep understanding of its core object mechanics is an invaluable asset for navigating its complexities and contributing to its ongoing innovation. Continuous learning and practical application of these advanced techniques are key to unlocking the full potential of JavaScript development.</p>
+            `
+        };
+
+        const contentContainer = document.getElementById('contentContainer');
+        const navLinks = document.querySelectorAll('#sidebarNav a');
+        let fanInstance; // To hold the Fan object for the interactive example
+
+        function loadContent(hash) {
+            const sectionId = hash ? hash.substring(1) : 'introduction';
+            if (content[sectionId]) {
+                contentContainer.innerHTML = `<div class="content-section">${content[sectionId]}</div>`;
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${sectionId}`) {
+                        link.classList.add('active');
+                    }
+                });
+                window.scrollTo(0, 0); // Scroll to top of content area
+
+                // Special handling for interactive Fan example
+                if (sectionId === 'designPatterns') {
+                    const fanButton = document.getElementById('fanButton');
+                    const fanStatusOutput = document.getElementById('fanStatusOutput');
+                    if (fanButton && fanStatusOutput) {
+                        // Define Fan classes here or ensure they are in scope
+                        class FanState {
+                            constructor(fan) { this.fan = fan; }
+                            clickButton() { throw new Error("Method 'clickButton()' must be implemented by concrete states.");}
+                        }
+                        class OffFanState extends FanState {
+                            clickButton() { this.fan.logStateChange("Fan: Turning on to Low Speed."); this.fan.setState(this.fan.lowSpeedState); }
+                        }
+                        class LowSpeedFanState extends FanState {
+                            clickButton() { this.fan.logStateChange("Fan: Increasing to Medium Speed."); this.fan.setState(this.fan.mediumSpeedState); }
+                        }
+                        class MediumSpeedFanState extends FanState {
+                            clickButton() { this.fan.logStateChange("Fan: Increasing to High Speed."); this.fan.setState(this.fan.highSpeedState); }
+                        }
+                        class HighSpeedFanState extends FanState {
+                            clickButton() { this.fan.logStateChange("Fan: Turning off."); this.fan.setState(this.fan.offFanState); }
+                        }
+                        class Fan {
+                            constructor(outputElement) {
+                                this.outputElement = outputElement;
+                                this.offFanState = new OffFanState(this);
+                                this.lowSpeedState = new LowSpeedFanState(this);
+                                this.mediumSpeedState = new MediumSpeedFanState(this);
+                                this.highSpeedState = new HighSpeedFanState(this);
+                                this.presentState = this.offFanState;
+                                this.logStateChange("Fan is currently OFF."); // Initial state log for interactive element
+                            }
+                            setState(newState) { this.presentState = newState; }
+                            clickButton() { this.presentState.clickButton(); }
+                            logStateChange(message) { if (this.outputElement) { this.outputElement.textContent = message; } }
+                        }
+                        fanInstance = new Fan(fanStatusOutput);
+                        fanButton.addEventListener('click', () => fanInstance.clickButton());
+                    }
+                }
+            } else {
+                contentContainer.innerHTML = '<p>Content not found.</p>';
+            }
+        }
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault();
+                const sectionId = this.getAttribute('href');
+                window.location.hash = sectionId;
+            });
+        });
+
+        window.addEventListener('hashchange', () => loadContent(window.location.hash));
+        
+        // Initial load
+        loadContent(window.location.hash || '#introduction');
+
+    </script>
+</body>
+</html>
