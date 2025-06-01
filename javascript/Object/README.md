@@ -104,30 +104,37 @@ This method is invaluable for introspection, enabling examination of the precise
 **Code Example:**
 
 ```js
-    const userSettings = {
-      userName: 'devUser',
-      displayMode: 'dark'
-    };
+const userSettings = {
+  userName: 'devUser',
+  displayMode: 'dark',
+};
 
-    // Define a hidden, non-configurable property using defineProperty
-    Object.defineProperty(userSettings, 'internalId', {
-      value: 'uuid-1234',
-      writable: false,
-      enumerable: false,
-      configurable: false
-    });
+// Define a hidden, non-configurable property using defineProperty
+Object.defineProperty(userSettings, 'internalId', {
+  value: 'uuid-1234',
+  writable: false,
+  enumerable: false,
+  configurable: false,
+});
 
-    const userNameDesc = Object.getOwnPropertyDescriptor(userSettings, 'userName');
-    console.log('userName Descriptor:', userNameDesc);
-    // Output: { value: 'devUser', writable: true, enumerable: true, configurable: true }
+const userNameDesc = Object.getOwnPropertyDescriptor(userSettings, 'userName');
+console.log('userName Descriptor:', userNameDesc);
+// Output: { value: 'devUser', writable: true, enumerable: true, configurable: true }
 
-    const internalIdDesc = Object.getOwnPropertyDescriptor(userSettings, 'internalId');
-    console.log('internalId Descriptor:', internalIdDesc);
-    // Output: { value: 'uuid-1234', writable: false, enumerable: false, configurable: false }
+const internalIdDesc = Object.getOwnPropertyDescriptor(
+  userSettings,
+  'internalId'
+);
+console.log('internalId Descriptor:', internalIdDesc);
+// Output: { value: 'uuid-1234', writable: false, enumerable: false, configurable: false }
 
-    const nonExistentDesc = Object.getOwnPropertyDescriptor(userSettings, 'lastLogin');
-    console.log('Non-existent Descriptor:', nonExistentDesc); // undefined
+const nonExistentDesc = Object.getOwnPropertyDescriptor(
+  userSettings,
+  'lastLogin'
+);
+console.log('Non-existent Descriptor:', nonExistentDesc); // undefined
 ```
+
 ## Getters and Setters: Dynamic Property Access
 
 Getters and setters, also known as "accessor properties," are specialized functions associated with an object property. They enable the definition of custom logic that executes when a property is read (via a getter) or written to (via a setter). This mechanism allows for computed properties, input validation, and the execution of side effects without directly exposing or manipulating internal data.
@@ -141,30 +148,30 @@ The most common and readable approach to defining getters and setters is directl
 **Code Example:**
 
 ```js
-    const rectangle = {
-      width: 10,
-      height: 20,
-      // Getter for 'area': computes value on access
-      get area() {
-        console.log('Calculating area...');
-        return this.width * this.height;
-      },
-      // Setter for 'dimensions': allows setting width and height via a single property
-      set dimensions(size) {
-        if (size.width && size.height && size.width > 0 && size.height > 0) {
-          this.width = size.width;
-          this.height = size.height;
-          console.log(`Dimensions updated to ${this.width}x${this.height}`);
-        } else {
-          console.error('Invalid dimensions provided.');
-        }
-      }
-    };
+const rectangle = {
+  width: 10,
+  height: 20,
+  // Getter for 'area': computes value on access
+  get area() {
+    console.log('Calculating area...');
+    return this.width * this.height;
+  },
+  // Setter for 'dimensions': allows setting width and height via a single property
+  set dimensions(size) {
+    if (size.width && size.height && size.width > 0 && size.height > 0) {
+      this.width = size.width;
+      this.height = size.height;
+      console.log(`Dimensions updated to ${this.width}x${this.height}`);
+    } else {
+      console.error('Invalid dimensions provided.');
+    }
+  },
+};
 
-    console.log(rectangle.area); // Calculating area... 200 (getter invoked)
-    rectangle.dimensions = { width: 15, height: 25 }; // Setter invoked
-    console.log(rectangle.area); // Calculating area... 375
-    rectangle.dimensions = { width: -5, height: 10 }; // Invalid dimensions provided.
+console.log(rectangle.area); // Calculating area... 200 (getter invoked)
+rectangle.dimensions = { width: 15, height: 25 }; // Setter invoked
+console.log(rectangle.area); // Calculating area... 375
+rectangle.dimensions = { width: -5, height: 10 }; // Invalid dimensions provided.
 ```
 
 ### Advanced Control with `Object.defineProperty()`
@@ -174,32 +181,31 @@ For scenarios requiring the definition of getters or setters on an _existing_ ob
 **Code Example:**
 
 ```js
+const product = {
+  _price: 100, // Convention for internal backing property
+};
 
-    const product = {
-      _price: 100 // Convention for internal backing property
-    };
+Object.defineProperty(product, 'price', {
+  get() {
+    console.log('Getting price...');
+    return this._price;
+  },
+  set(newPrice) {
+    if (newPrice < 0) {
+      console.error('Price cannot be negative.');
+      return;
+    }
+    console.log('Setting price...');
+    this._price = newPrice;
+  },
+  enumerable: true, // Allows 'price' to show up in loops/keys
+  configurable: false, // Prevents deletion or redefinition of 'price'
+});
 
-    Object.defineProperty(product, 'price', {
-      get() {
-        console.log('Getting price...');
-        return this._price;
-      },
-      set(newPrice) {
-        if (newPrice < 0) {
-          console.error('Price cannot be negative.');
-          return;
-        }
-        console.log('Setting price...');
-        this._price = newPrice;
-      },
-      enumerable: true,   // Allows 'price' to show up in loops/keys
-      configurable: false // Prevents deletion or redefinition of 'price'
-    });
-
-    console.log(product.price); // Getting price... 100
-    product.price = 150;        // Setting price...
-    console.log(product._price); // 150
-    product.price = -10;        // Price cannot be negative.
+console.log(product.price); // Getting price... 100
+product.price = 150; // Setting price...
+console.log(product._price); // 150
+product.price = -10; // Price cannot be negative.
 ```
 
 ### Practical Applications: Validation, Computed Properties
@@ -265,19 +271,19 @@ These static methods provide standard and explicit ways to interact with an obje
 **Code Example:**
 
 ```js
+const base = { baseProp: 'I am base' };
+const child = {};
 
-    const base = { baseProp: 'I am base' };
-    const child = {};
+Object.setPrototypeOf(child, base);
+console.log(Object.getPrototypeOf(child)); // { baseProp: 'I am base' }
+console.log(child.baseProp); // I am base
 
-    Object.setPrototypeOf(child, base);
-    console.log(Object.getPrototypeOf(child)); // { baseProp: 'I am base' }
-    console.log(child.baseProp); // I am base
-
-    const newBase = { newBaseProp: 'I am new base' };
-    Object.setPrototypeOf(child, newBase); // Dynamically change prototype
-    console.log(child.baseProp);    // undefined (no longer inherited from 'base')
-    console.log(child.newBaseProp); // I am new base
+const newBase = { newBaseProp: 'I am new base' };
+Object.setPrototypeOf(child, newBase); // Dynamically change prototype
+console.log(child.baseProp); // undefined (no longer inherited from 'base')
+console.log(child.newBaseProp); // I am new base
 ```
+
 ### `Object.create()`: Customizing Prototypes
 
 The `Object.create()` static method is a powerful tool for creating new objects with a specified prototype object and properties. It provides fine-tuned control over the object creation process, allowing developers to explicitly set the prototype of the newly created object.
@@ -287,27 +293,27 @@ One particularly powerful use case for `Object.create()` is creating objects wit
 **Code Example:**
 
 ```js
+const personPrototype = {
+  greet() {
+    console.log(`Hello, my name is ${this.name}`);
+  },
+};
 
-    const personPrototype = {
-      greet() {
-        console.log(`Hello, my name is ${this.name}`);
-      }
-    };
+// Create an object with personPrototype as its prototype
+const john = Object.create(personPrototype);
+john.name = 'John';
+john.greet(); // Hello, my name is John
 
-    // Create an object with personPrototype as its prototype
-    const john = Object.create(personPrototype);
-    john.name = 'John';
-    john.greet(); // Hello, my name is John
+// Create a "pure" dictionary object without Object.prototype in its chain
+const cleanMap = Object.create(null);
+cleanMap.data = 'some data';
+console.log(cleanMap.data); // some data
+console.log(cleanMap.toString); // undefined (no inherited methods like toString)
 
-    // Create a "pure" dictionary object without Object.prototype in its chain
-    const cleanMap = Object.create(null);
-    cleanMap.data = 'some data';
-    console.log(cleanMap.data); // some data
-    console.log(cleanMap.toString); // undefined (no inherited methods like toString)
-
-    // To safely check for own properties on a null-prototype object:
-    console.log(Object.prototype.hasOwnProperty.call(cleanMap, 'data')); // true
+// To safely check for own properties on a null-prototype object:
+console.log(Object.prototype.hasOwnProperty.call(cleanMap, 'data')); // true
 ```
+
 ## Ensuring Object Integrity: Immutability and Extensibility
 
 JavaScript provides several built-in methods to control the extensibility and mutability of objects, offering distinct levels of "locking down" an object's state. Understanding this spectrum of immutability is crucial for choosing the appropriate level of protection for different parts of an application.
@@ -321,21 +327,21 @@ This static method marks an object as non-extensible, meaning that no new proper
 **Code Example:**
 
 ```js
+const config = {
+  api_key: 'abc',
+  debug_mode: true,
+};
 
-    const config = {
-      api_key: 'abc',
-      debug_mode: true
-    };
+Object.preventExtensions(config);
+console.log(Object.isExtensible(config)); // false
 
-    Object.preventExtensions(config);
-    console.log(Object.isExtensible(config)); // false
+config.new_prop = 'value'; // Fails silently or throws TypeError in strict mode
+console.log(config.new_prop); // undefined
 
-    config.new_prop = 'value'; // Fails silently or throws TypeError in strict mode
-    console.log(config.new_prop); // undefined
-
-    delete config.debug_mode; // Allowed: existing properties can be deleted
-    console.log(config.debug_mode); // undefined
+delete config.debug_mode; // Allowed: existing properties can be deleted
+console.log(config.debug_mode); // undefined
 ```
+
 ### `Object.seal()`: Sealing Properties
 
 This method "seals" an object, which prevents new properties from being added and makes all existing properties non-configurable.
@@ -345,22 +351,22 @@ This method "seals" an object, which prevents new properties from being added an
 **Code Example:**
 
 ```js
+const settings = {
+  theme: 'dark',
+  volume: 50,
+};
 
-    const settings = {
-      theme: 'dark',
-      volume: 50
-    };
+Object.seal(settings);
+console.log(Object.isSealed(settings)); // true
+console.log(Object.isExtensible(settings)); // false (sealed implies non-extensible)
 
-    Object.seal(settings);
-    console.log(Object.isSealed(settings)); // true
-    console.log(Object.isExtensible(settings)); // false (sealed implies non-extensible)
+settings.new_setting = 'value'; // Fails silently or throws TypeError
+delete settings.theme; // Fails silently or throws TypeError
 
-    settings.new_setting = 'value'; // Fails silently or throws TypeError
-    delete settings.theme;        // Fails silently or throws TypeError
-
-    settings.volume = 75; // Allowed: value of writable property can be changed
-    console.log(settings.volume); // 75
+settings.volume = 75; // Allowed: value of writable property can be changed
+console.log(settings.volume); // 75
 ```
+
 ### `Object.freeze()`: Deep Immutability Considerations
 
 This method "freezes" an object, representing the highest level of integrity provided by JavaScript's built-in object methods. It prevents any extensions, makes existing properties non-writable, and renders them non-configurable.
@@ -425,12 +431,13 @@ This method "freezes" an object, representing the highest level of integrity pro
     console.log(deepAppState.user.name); // Alice
     console.log(deepAppState.data);     //
 ```
+
 The ability to choose between `preventExtensions`, `seal`, and `freeze` offers a clear spectrum of immutability levels. `preventExtensions` is useful for preventing accidental additions to a configuration object. `seal` is for objects where the set of properties is fixed, but their values can still change (e.g., a mutable state object with fixed keys). `freeze` is for truly constant data structures. Understanding this gradient is crucial for selecting the right tool for the job, balancing flexibility with data integrity.
 
 ### Object Integrity Methods Comparison
 
 <div class="horizontal-scroll-wrapper">
-<div class="table-block-component"><response-element class="" ng-version="0.0.0-PLACEHOLDER"><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><table-block _nghost-ng-c3734718589="" class="ng-star-inserted"><div _ngcontent-ng-c3734718589="" class="table-block has-export-button"><div _ngcontent-ng-c3734718589="" not-end-of-paragraph="" class="table-content not-end-of-paragraph"><table data-sourcepos="429:1-433:68"><tbody><tr data-sourcepos="429:1-429:184"><th data-sourcepos="429:1-429:8" align="left">Method</th><th data-sourcepos="429:10-429:26" align="left">New Properties?</th><th data-sourcepos="429:28-429:59" align="left">Existing Properties Deletable?</th><th data-sourcepos="429:61-429:96" align="left">Existing Data Properties Writable?</th><th data-sourcepos="429:98-429:132" align="left">Existing Properties Configurable?</th><th data-sourcepos="429:134-429:166" align="left">Affects Prototype Reassignment?</th><th data-sourcepos="429:168-429:182" align="left">Shallow/Deep?</th></tr><tr data-sourcepos="431:1-431:82"><td data-sourcepos="431:1-431:30" align="left"><code>Object.preventExtensions()</code></td><td data-sourcepos="431:32-431:35" align="left">No</td><td data-sourcepos="431:37-431:41" align="left">Yes</td><td data-sourcepos="431:43-431:47" align="left">Yes</td><td data-sourcepos="431:49-431:53" align="left">Yes</td><td data-sourcepos="431:55-431:70" align="left">Yes (prevents)</td><td data-sourcepos="431:72-431:80" align="left">Shallow</td></tr><tr data-sourcepos="432:1-432:67"><td data-sourcepos="432:1-432:17" align="left"><code>Object.seal()</code></td><td data-sourcepos="432:19-432:22" align="left">No</td><td data-sourcepos="432:24-432:27" align="left">No</td><td data-sourcepos="432:29-432:33" align="left">Yes</td><td data-sourcepos="432:35-432:38" align="left">No</td><td data-sourcepos="432:40-432:55" align="left">Yes (prevents)</td><td data-sourcepos="432:57-432:65" align="left">Shallow</td></tr><tr data-sourcepos="433:1-433:68"><td data-sourcepos="433:1-433:19" align="left"><code>Object.freeze()</code></td><td data-sourcepos="433:21-433:24" align="left">No</td><td data-sourcepos="433:26-433:29" align="left">No</td><td data-sourcepos="433:31-433:34" align="left">No</td><td data-sourcepos="433:36-433:39" align="left">No</td><td data-sourcepos="433:41-433:56" align="left">Yes (prevents)</td><td data-sourcepos="433:58-433:66" align="left">Shallow</td></tr></tbody></table></div><div _ngcontent-ng-c3734718589="" hide-from-message-actions="" class="table-footer hide-from-message-actions ng-star-inserted"><button _ngcontent-ng-c3734718589="" mat-button="" class="mdc-button mat-mdc-button-base mat-mdc-button mat-unthemed" mat-ripple-loader-uninitialized="" mat-ripple-loader-class-name="mat-mdc-button-ripple" jslog="184701;track:generic_click,impression;BardVeMetadataKey:[[&quot;r_b4ac9b6c7b8dca7f&quot;,&quot;c_ee2a737e82d05412&quot;,null,null,null,null,null,null,null,null,null,null,0]]"><span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span><span class="mdc-button__label"><span _ngcontent-ng-c3734718589="" class="export-sheets-button"><span _ngcontent-ng-c3734718589="" class="export-sheets-icon"><mat-icon _ngcontent-ng-c3734718589="" role="img" fonticon="drive_spreadsheet" class="mat-icon notranslate google-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" data-mat-icon-name="drive_spreadsheet"></mat-icon></span><span _ngcontent-ng-c3734718589="">Export to Sheets</span></span></span><span class="mat-focus-indicator"></span><span class="mat-mdc-button-touch-target"></span></button></div><!----></div></table-block><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----></response-element></div>
+<div class="table-block-component"><response-element class="" ng-version="0.0.0-PLACEHOLDER"><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><table-block _nghost-ng-c3734718589="" class="ng-star-inserted"><div _ngcontent-ng-c3734718589="" class="table-block has-export-button"><div _ngcontent-ng-c3734718589="" not-end-of-paragraph="" class="table-content not-end-of-paragraph"><table data-sourcepos="429:1-433:68"><tbody><tr data-sourcepos="429:1-429:184"><th data-sourcepos="429:1-429:8" align="left">Method</th><th data-sourcepos="429:10-429:26" align="left">New Properties?</th><th data-sourcepos="429:28-429:59" align="left">Existing Properties Deletable?</th><th data-sourcepos="429:61-429:96" align="left">Existing Data Properties Writable?</th><th data-sourcepos="429:98-429:132" align="left">Existing Properties Configurable?</th><th data-sourcepos="429:134-429:166" align="left">Affects Prototype Reassignment?</th><th data-sourcepos="429:168-429:182" align="left">Shallow/Deep?</th></tr><tr data-sourcepos="431:1-431:82"><td data-sourcepos="431:1-431:30" align="left"><code>Object.preventExtensions()</code></td><td data-sourcepos="431:32-431:35" align="left">No</td><td data-sourcepos="431:37-431:41" align="left">Yes</td><td data-sourcepos="431:43-431:47" align="left">Yes</td><td data-sourcepos="431:49-431:53" align="left">Yes</td><td data-sourcepos="431:55-431:70" align="left">Yes (prevents)</td><td data-sourcepos="431:72-431:80" align="left">Shallow</td></tr><tr data-sourcepos="432:1-432:67"><td data-sourcepos="432:1-432:17" align="left"><code>Object.seal()</code></td><td data-sourcepos="432:19-432:22" align="left">No</td><td data-sourcepos="432:24-432:27" align="left">No</td><td data-sourcepos="432:29-432:33" align="left">Yes</td><td data-sourcepos="432:35-432:38" align="left">No</td><td data-sourcepos="432:40-432:55" align="left">Yes (prevents)</td><td data-sourcepos="432:57-432:65" align="left">Shallow</td></tr><tr data-sourcepos="433:1-433:68"><td data-sourcepos="433:1-433:19" align="left"><code>Object.freeze()</code></td><td data-sourcepos="433:21-433:24" align="left">No</td><td data-sourcepos="433:26-433:29" align="left">No</td><td data-sourcepos="433:31-433:34" align="left">No</td><td data-sourcepos="433:36-433:39" align="left">No</td><td data-sourcepos="433:41-433:56" align="left">Yes (prevents)</td><td data-sourcepos="433:58-433:66" align="left">Shallow</td></tr></tbody></table></div><div _ngcontent-ng-c3734718589="" hide-from-message-actions="" class="table-footer hide-from-message-actions ng-star-inserted"></div><!----></div></table-block><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----></response-element></div>
 </div>
 This table concisely summarizes the distinct behaviors of each immutability method. It provides a quick reference for choosing the correct method based on the desired level of object integrity. The "Shallow/Deep?" column specifically addresses the common `Object.freeze` misconception, reinforcing the need for deep freezing when full immutability is required.
 
@@ -449,68 +456,93 @@ Metaprogramming involves writing code that can inspect, modify, or generate othe
 
 The `handler` object can define various traps to intercept different operations:
 
-- **`get(target, prop, receiver)`:** Intercepts property reads (e.g., `obj.prop`, `obj['prop']`). **Code Example (Default Value):**
+- **`get(target, prop, receiver)`:** Intercepts property reads (e.g., `obj.prop`, `obj['prop']`).
+
+**Code Example (Default Value):**
 
 ```js
-
-      const defaultHandler = {
-        get(target, name) {
-          return name in target? Reflect.get(target, name) : 'N/A'; // Use Reflect for default behavior [14]
-        }
-      };
-      const userProfile = new Proxy({ name: 'Jane Doe' }, defaultHandler);
-      console.log(userProfile.name);   // Jane Doe
-      console.log(userProfile.email);  // N/A
+const defaultHandler = {
+  get(target, name) {
+    return name in target ? Reflect.get(target, name) : 'N/A'; // Use Reflect for default behavior [14]
+  },
+};
+const userProfile = new Proxy({ name: 'Jane Doe' }, defaultHandler);
+console.log(userProfile.name); // Jane Doe
+console.log(userProfile.email); // N/A
 ```
-- **`set(target, prop, value, receiver)`:** Intercepts property assignments (e.g., `obj.prop = value`). **Code Example (Validation):**
+
+- **`set(target, prop, value, receiver)`:** Intercepts property assignments (e.g., `obj.prop = value`).
+
+**Code Example (Validation):**
 
 ```js
-
-      const validationHandler = {
-        set(target, prop, value) {
-          if (prop === 'age') {
-            if (!Number.isInteger(value) |
-
-| value < 0) { throw new TypeError('Age must be a non-negative integer.'); // } } Reflect.set(target, prop, value); // Use Reflect for default assignment return true; } }; const person = new Proxy({}, validationHandler); person.name = 'Alice'; person.age = 30; console.log(person.age); // 30 try { person.age = 'twenty'; // Throws TypeError } catch (e) { console.log(`Error: ${e.message}`); } \`\`\`
-
-- **`apply(target, thisArg, argumentsList)`:** Intercepts function calls (e.g., `func()`, `func.call()`, `func.apply()`). **Code Example (Logging Function Calls):**
-```
-```js
-
-      function sum(a, b) {
-        return a + b;
+const validationHandler = {
+  set(target, prop, value) {
+    if (prop === 'age') {
+      if (!Number.isInteger(value) || value < 0) {
+        throw new TypeError('Age must be a non-negative integer.');
       }
-      const loggingHandler = {
-        apply(target, thisArg, argumentsList) {
-          console.log(`Calling function "${target.name}" with arguments:`, argumentsList);
-          return Reflect.apply(target, thisArg, argumentsList); // [14]
-        }
-      };
-      const proxiedSum = new Proxy(sum, loggingHandler);
-      console.log(proxiedSum(5, 3)); // Calling function "sum" with arguments:  -> 8
+    }
+    Reflect.set(target, prop, value); // Use Reflect for default assignment
+    return true;
+  },
+};
+const person = new Proxy({}, validationHandler);
+person.name = 'Alice';
+person.age = 30;
+console.log(person.age); // 30
+try {
+  person.age = 'twenty'; // Throws TypeError
+} catch (e) {
+  console.log(`Error: ${e.message}`);
+}
 ```
-- **`construct(target, argumentsList, newTarget)`:** Intercepts `new` operator calls (e.g., `new Class()`). **Code Example (Custom Constructor Logic):**
+
+- **`apply(target, thisArg, argumentsList)`:** Intercepts function calls (e.g., `func()`, `func.call()`, `func.apply()`).
+
+**Code Example (Logging Function Calls):**
 
 ```js
-
-      class Product {
-        constructor(name, price) {
-          this.name = name;
-          this.price = price;
-        }
-      }
-      const constructorHandler = {
-        construct(target, argumentsList, newTarget) {
-          console.log('Intercepting new Product() call...');
-          const instance = Reflect.construct(target, argumentsList, newTarget); // [14]
-          instance.createdAt = new Date(); // Add extra property
-          return instance;
-        }
-      };
-      const ProxiedProduct = new Proxy(Product, constructorHandler);
-      const laptop = new ProxiedProduct('Laptop', 1200);
-      console.log(laptop); // Product { name: 'Laptop', price: 1200, createdAt: <Date> }
+function sum(a, b) {
+  return a + b;
+}
+const loggingHandler = {
+  apply(target, thisArg, argumentsList) {
+    console.log(
+      `Calling function "${target.name}" with arguments:`,
+      argumentsList
+    );
+    return Reflect.apply(target, thisArg, argumentsList); // [14]
+  },
+};
+const proxiedSum = new Proxy(sum, loggingHandler);
+console.log(proxiedSum(5, 3)); // Calling function "sum" with arguments:  -> 8
 ```
+
+- **`construct(target, argumentsList, newTarget)`:** Intercepts `new` operator calls (e.g., `new Class()`).
+
+**Code Example (Custom Constructor Logic):**
+
+```js
+class Product {
+  constructor(name, price) {
+    this.name = name;
+    this.price = price;
+  }
+}
+const constructorHandler = {
+  construct(target, argumentsList, newTarget) {
+    console.log('Intercepting new Product() call...');
+    const instance = Reflect.construct(target, argumentsList, newTarget); // [14]
+    instance.createdAt = new Date(); // Add extra property
+    return instance;
+  },
+};
+const ProxiedProduct = new Proxy(Product, constructorHandler);
+const laptop = new ProxiedProduct('Laptop', 1200);
+console.log(laptop); // Product { name: 'Laptop', price: 1200, createdAt: <Date> }
+```
+
 ### Practical Use Cases
 
 Proxies offer a wide array of practical applications:
@@ -531,23 +563,26 @@ The `Proxy.revocable()` method creates a `Proxy` that can be programmatically di
 **Code Example:**
 
 ```js
+const { proxy, revoke } = Proxy.revocable(
+  { data: 'sensitive info' },
+  {
+    get(target, prop) {
+      console.log(`Accessing ${String(prop)}`);
+      return Reflect.get(target, prop);
+    },
+  }
+);
 
-    const { proxy, revoke } = Proxy.revocable({ data: 'sensitive info' }, {
-      get(target, prop) {
-        console.log(`Accessing ${String(prop)}`);
-        return Reflect.get(target, prop);
-      }
-    });
+console.log(proxy.data); // Accessing data -> sensitive info
+revoke(); // Turn off the proxy
 
-    console.log(proxy.data); // Accessing data -> sensitive info
-    revoke(); // Turn off the proxy
-
-    try {
-      console.log(proxy.data); // Throws TypeError
-    } catch (e) {
-      console.log(`Error: ${e.message}`); // Cannot perform 'get' on a proxy that has been revoked
-    }
+try {
+  console.log(proxy.data); // Throws TypeError
+} catch (e) {
+  console.log(`Error: ${e.message}`); // Cannot perform 'get' on a proxy that has been revoked
+}
 ```
+
 ## Symbols: Unique and Hidden Object Keys
 
 Symbols are a primitive data type introduced in ES6, primarily used to create unique property keys that are guaranteed not to collide with other keys and can be hidden from typical enumeration mechanisms.
@@ -559,17 +594,17 @@ Symbols are a primitive data type introduced in ES6, primarily used to create un
 **Code Example:**
 
 ```js
+const uniqueId1 = Symbol('id');
+const uniqueId2 = Symbol('id');
+console.log(uniqueId1 === uniqueId2); // false
 
-    const uniqueId1 = Symbol('id');
-    const uniqueId2 = Symbol('id');
-    console.log(uniqueId1 === uniqueId2); // false
-
-    const user = {
-      name: 'Alice',
-      [uniqueId1]: 123 // Using Symbol as a property key
-    };
-    console.log(user[uniqueId1]); // 123
+const user = {
+  name: 'Alice',
+  [uniqueId1]: 123, // Using Symbol as a property key
+};
+console.log(user[uniqueId1]); // 123
 ```
+
 ### Global Symbol Registry (`Symbol.for`, `Symbol.keyFor`)
 
 - **`Symbol.for(key)`:** This method retrieves a Symbol from a global registry based on a string `key`. If a Symbol with the given key does not already exist in the registry, a new one is created and registered. This mechanism allows Symbols to be shared and consistently retrieved across different parts of an application or even different JavaScript realms (e.g., web workers or iframes, each with its own global scope).
@@ -578,17 +613,17 @@ Symbols are a primitive data type introduced in ES6, primarily used to create un
 **Code Example:**
 
 ```js
+const globalSymbol1 = Symbol.for('app.config');
+const globalSymbol2 = Symbol.for('app.config');
+console.log(globalSymbol1 === globalSymbol2); // true (same Symbol from registry)
 
-    const globalSymbol1 = Symbol.for('app.config');
-    const globalSymbol2 = Symbol.for('app.config');
-    console.log(globalSymbol1 === globalSymbol2); // true (same Symbol from registry)
+const anotherLocalSymbol = Symbol('app.config'); // A local, unique Symbol
+console.log(globalSymbol1 === anotherLocalSymbol); // false
 
-    const anotherLocalSymbol = Symbol('app.config'); // A local, unique Symbol
-    console.log(globalSymbol1 === anotherLocalSymbol); // false
-
-    console.log(Symbol.keyFor(globalSymbol1)); // app.config
-    console.log(Symbol.keyFor(anotherLocalSymbol)); // undefined (not in global registry)
+console.log(Symbol.keyFor(globalSymbol1)); // app.config
+console.log(Symbol.keyFor(anotherLocalSymbol)); // undefined (not in global registry)
 ```
+
 ### Using Symbols for Non-Colliding Properties
 
 Symbols are particularly useful for adding "private-ish" internal properties to objects without the risk of name collisions with other code or libraries. Their non-enumerable nature by default also provides a practical way to "hide" properties from casual inspection, fostering better module design and preventing accidental external dependencies on internal object details.
@@ -600,21 +635,21 @@ Symbols are particularly useful for adding "private-ish" internal properties to 
 **Code Example:**
 
 ```js
+const myObject = {
+  name: 'Test Object',
+  data: 10,
+};
 
-    const myObject = {
-      name: 'Test Object',
-      data: 10
-    };
+const internalId = Symbol('internalId');
+myObject[internalId] = 'unique-internal-value';
 
-    const internalId = Symbol('internalId');
-    myObject[internalId] = 'unique-internal-value';
-
-    console.log(Object.keys(myObject)); // ['name', 'data'] - Symbol is hidden
-    for (const key in myObject) {
-      console.log(key); // Only 'name', 'data'
-    }
-    console.log(myObject[internalId]); // 'unique-internal-value' (still accessible directly)
+console.log(Object.keys(myObject)); // ['name', 'data'] - Symbol is hidden
+for (const key in myObject) {
+  console.log(key); // Only 'name', 'data'
+}
+console.log(myObject[internalId]); // 'unique-internal-value' (still accessible directly)
 ```
+
 ### `Object.getOwnPropertySymbols()`
 
 - **Purpose:** This method returns an array of all Symbol properties found directly on a given object. It is the specific mechanism to inspect and retrieve Symbol-keyed properties, as they are not returned by `Object.keys()` or `Object.getOwnPropertyNames()`.
@@ -622,21 +657,21 @@ Symbols are particularly useful for adding "private-ish" internal properties to 
 **Code Example:**
 
 ```js
+const myObject = {
+  name: 'Test Object',
+};
+const internalId = Symbol('internalId');
+const debugFlag = Symbol('debugFlag');
 
-    const myObject = {
-      name: 'Test Object'
-    };
-    const internalId = Symbol('internalId');
-    const debugFlag = Symbol('debugFlag');
+myObject[internalId] = 'abc-123';
+myObject[debugFlag] = true;
 
-    myObject[internalId] = 'abc-123';
-    myObject[debugFlag] = true;
-
-    const symbols = Object.getOwnPropertySymbols(myObject);
-    console.log(symbols); //
-    console.log(symbols.length); // 2 [18]
-    console.log(myObject[symbols]); // abc-123
+const symbols = Object.getOwnPropertySymbols(myObject);
+console.log(symbols); //
+console.log(symbols.length); // 2 [18]
+console.log(myObject[symbols]); // abc-123
 ```
+
 ## Advanced Object Creation and Manipulation
 
 Beyond simple object literals, JavaScript offers a rich set of mechanisms for creating and manipulating objects, including traditional constructor functions, modern ES6 classes, and sophisticated techniques for copying and transforming data structures.
@@ -648,36 +683,36 @@ Beyond simple object literals, JavaScript offers a rich set of mechanisms for cr
 **Code Example:**
 
 ```js
-
-    function Car(make, model, year) {
-      this.make = make;
-      this.model = model;
-      this.year = year;
-      this.display = function() {
-        console.log(`${this.year} ${this.make} ${this.model}`);
-      };
-    }
-    const myCar = new Car('Honda', 'Civic', 2020);
-    myCar.display(); // 2020 Honda Civic
+function Car(make, model, year) {
+  this.make = make;
+  this.model = model;
+  this.year = year;
+  this.display = function () {
+    console.log(`${this.year} ${this.make} ${this.model}`);
+  };
+}
+const myCar = new Car('Honda', 'Civic', 2020);
+myCar.display(); // 2020 Honda Civic
 ```
+
 - **ES6 Classes:** Introduced in ECMAScript 2015 (ES6), classes provide a cleaner, more structured, and syntactically familiar way to define object blueprints. They are, in essence, syntactic sugar over constructor functions and the underlying prototypal inheritance model. While they offer a more conventional class-like syntax, the core mechanics of inheritance and object creation still rely on prototypes.
 
 **Code Example:**
 
 ```js
-
-    class Vehicle {
-      constructor(make, model) {
-        this.make = make;
-        this.model = model;
-      }
-      displayInfo() {
-        console.log(`Vehicle: ${this.make} ${this.model}`);
-      }
-    }
-    const myVehicle = new Vehicle('Toyota', 'Camry');
-    myVehicle.displayInfo(); // Vehicle: Toyota Camry
+class Vehicle {
+  constructor(make, model) {
+    this.make = make;
+    this.model = model;
+  }
+  displayInfo() {
+    console.log(`Vehicle: ${this.make} ${this.model}`);
+  }
+}
+const myVehicle = new Vehicle('Toyota', 'Camry');
+myVehicle.displayInfo(); // Vehicle: Toyota Camry
 ```
+
 ### Shallow vs. Deep Copying
 
 A fundamental concept in JavaScript object manipulation is the distinction between shallow and deep copies. Objects in JavaScript are reference types; direct assignment creates a reference to the original object, not an independent copy. Copying is therefore crucial to avoid unintended side effects when modifying an object.
@@ -689,17 +724,17 @@ A fundamental concept in JavaScript object manipulation is the distinction betwe
 **Code Example:**
 
 ```js
+const original = { a: 1, nested: { b: 2 } };
+const shallowCopyAssign = Object.assign({}, original);
+const shallowCopySpread = { ...original };
 
-    const original = { a: 1, nested: { b: 2 } };
-    const shallowCopyAssign = Object.assign({}, original);
-    const shallowCopySpread = {...original };
+shallowCopyAssign.nested.b = 3;
+console.log(original.nested.b); // 3 (original affected by shallowCopyAssign)
 
-    shallowCopyAssign.nested.b = 3;
-    console.log(original.nested.b); // 3 (original affected by shallowCopyAssign)
-
-    shallowCopySpread.nested.b = 4;
-    console.log(original.nested.b); // 4 (original affected by shallowCopySpread)
+shallowCopySpread.nested.b = 4;
+console.log(original.nested.b); // 4 (original affected by shallowCopySpread)
 ```
+
 - **Deep Copy Methods:** These methods create a completely independent copy of an object, including all nested objects and arrays, ensuring that modifications to the copy do not affect the original. The distinction between shallow and deep copies is fundamental for avoiding subtle bugs when manipulating objects, especially those with nested structures. A common pitfall for JavaScript developers is assuming that `Object.assign` or the spread operator creates a completely independent copy of an object. This can lead to unexpected side effects where modifying the "copy" inadvertently changes the "original." Understanding this distinction is crucial for data integrity.
 
   - **`JSON.parse(JSON.stringify(obj))`:** This is a simple method for deep copying objects that are JSON-serializable. However, it has significant limitations: it cannot handle functions, `Date` objects, `undefined` values, `Symbol` values, `BigInt` values, or circular references, as these are not part of the JSON standard.
@@ -708,15 +743,15 @@ A fundamental concept in JavaScript object manipulation is the distinction betwe
 **Code Example:**
 
 ```js
+const original = { a: 1, nested: { b: 2 }, func: () => {}, date: new Date() };
+const deepCopyJSON = JSON.parse(JSON.stringify(original)); // func and date will be lost/transformed
 
-    const original = { a: 1, nested: { b: 2 }, func: () => {}, date: new Date() };
-    const deepCopyJSON = JSON.parse(JSON.stringify(original)); // func and date will be lost/transformed
-
-    deepCopyJSON.nested.b = 5;
-    console.log(original.nested.b); // 4 (not affected by deepCopyJSON changes)
-    console.log(deepCopyJSON.func); // undefined
-    console.log(deepCopyJSON.date); // String representation of date, not Date object
+deepCopyJSON.nested.b = 5;
+console.log(original.nested.b); // 4 (not affected by deepCopyJSON changes)
+console.log(deepCopyJSON.func); // undefined
+console.log(deepCopyJSON.date); // String representation of date, not Date object
 ```
+
 ### `Object.fromEntries()`: Transforming Data
 
 - **Purpose:** The `Object.fromEntries()` static method transforms a list of key-value pairs into a new object. It serves as the reverse operation of `Object.entries()`, which converts an object into an array of `[key, value]` pairs.
@@ -745,6 +780,7 @@ A fundamental concept in JavaScript object manipulation is the distinction betwe
     );
     console.log(doubledPrices); // { laptop: 2400, keyboard: 150, mouse: 50 }
 ```
+
 ### Destructuring Objects: Advanced Techniques and Tips
 
 - **Purpose:** Object destructuring is a powerful ES6 feature that allows developers to extract values from objects into distinct variables with concise syntax, significantly simplifying code and improving readability.
@@ -758,40 +794,40 @@ A fundamental concept in JavaScript object manipulation is the distinction betwe
 **Code Example:**
 
 ```js
+const user = {
+  id: 1,
+  firstName: 'John',
+  lastName: 'Doe',
+  address: {
+    city: 'Anytown',
+    zip: '12345',
+  },
+  preferences: {
+    theme: 'dark',
+  },
+};
 
-    const user = {
-      id: 1,
-      firstName: 'John',
-      lastName: 'Doe',
-      address: {
-        city: 'Anytown',
-        zip: '12345'
-      },
-      preferences: {
-        theme: 'dark'
-      }
-    };
+// Renaming and default values
+const {
+  firstName: name,
+  age = 30, // Default value for missing 'age' property
+  address: { city }, // Nested destructuring for 'city'
+  preferences: { language = 'en' }, // Nested destructuring with default for 'language'
+} = user;
+console.log(name, age, city, language); // John 30 Anytown en
 
-    // Renaming and default values
-    const {
-      firstName: name,
-      age = 30, // Default value for missing 'age' property
-      address: { city }, // Nested destructuring for 'city'
-      preferences: { language = 'en' } // Nested destructuring with default for 'language'
-    } = user;
-    console.log(name, age, city, language); // John 30 Anytown en
+// Rest operator to collect remaining properties
+const { id, ...details } = user;
+console.log(id); // 1
+console.log(details); // { firstName: 'John', lastName: 'Doe', address: {...}, preferences: {...} }
 
-    // Rest operator to collect remaining properties
-    const { id,...details } = user;
-    console.log(id);      // 1
-    console.log(details); // { firstName: 'John', lastName: 'Doe', address: {...}, preferences: {...} }
-
-    // Destructuring in function parameters for cleaner code
-    function printUserDetails({ firstName, lastName, address: { city } }) {
-      console.log(`User: ${firstName} ${lastName}, from ${city}`);
-    }
-    printUserDetails(user); // User: John Doe, from Anytown
+// Destructuring in function parameters for cleaner code
+function printUserDetails({ firstName, lastName, address: { city } }) {
+  console.log(`User: ${firstName} ${lastName}, from ${city}`);
+}
+printUserDetails(user); // User: John Doe, from Anytown
 ```
+
 ## Object-Oriented Design Patterns in Practice
 
 JavaScript's flexible object model allows for the effective implementation of various object-oriented design patterns. These patterns provide proven solutions to common software design problems, improving code structure, maintainability, and reusability.
@@ -806,34 +842,37 @@ JavaScript's flexible object model allows for the effective implementation of va
 **Code Example (Basic Module):**
 
 ```js
+const Calculator = (function () {
+  let result = 0; // Private variable [28]
 
-    const Calculator = (function() {
-      let result = 0; // Private variable [28]
+  function add(num) {
+    // Private method
+    result += num;
+    return result;
+  }
 
-      function add(num) { // Private method
-        result += num;
-        return result;
-      }
+  function subtract(num) {
+    result -= num;
+    return result;
+  }
 
-      function subtract(num) {
-        result -= num;
-        return result;
-      }
+  return {
+    // Public interface
+    add: add,
+    subtract: subtract,
+    getCurrentResult: function () {
+      // Public method to access private state
+      return result;
+    },
+  };
+})();
 
-      return { // Public interface
-        add: add,
-        subtract: subtract,
-        getCurrentResult: function() { // Public method to access private state
-          return result;
-        }
-      };
-    })();
-
-    console.log(Calculator.add(5)); // 5
-    console.log(Calculator.subtract(2)); // 3
-    console.log(Calculator.getCurrentResult()); // 3
-    console.log(Calculator.result); // undefined (private and inaccessible)
+console.log(Calculator.add(5)); // 5
+console.log(Calculator.subtract(2)); // 3
+console.log(Calculator.getCurrentResult()); // 3
+console.log(Calculator.result); // undefined (private and inaccessible)
 ```
+
 ### The Mixin Pattern: Composition over Inheritance
 
 - **Purpose:** The Mixin Pattern provides a flexible way to add reusable functionality to an object or class without relying on traditional inheritance. It addresses JavaScript's single inheritance limitation by allowing objects to "mix in" behaviors from multiple sources, effectively simulating multiple inheritance without the complexities of a deep class hierarchy.
@@ -843,35 +882,35 @@ JavaScript's flexible object model allows for the effective implementation of va
 **Code Example:**
 
 ```js
+const CanFly = {
+  fly() {
+    console.log(`${this.name} is flying!`); // [30]
+  },
+};
 
-    const CanFly = {
-      fly() {
-        console.log(`${this.name} is flying!`); // [30]
-      }
-    };
+const CanSwim = {
+  swim() {
+    console.log(`${this.name} is swimming!`); // [30]
+  },
+};
 
-    const CanSwim = {
-      swim() {
-        console.log(`${this.name} is swimming!`); // [30]
-      }
-    };
+class Bird {
+  constructor(name) {
+    this.name = name;
+  }
+}
 
-    class Bird {
-      constructor(name) {
-        this.name = name;
-      }
-    }
+// Add flying behavior to Bird prototype
+Object.assign(Bird.prototype, CanFly); // [30, 31]
 
-    // Add flying behavior to Bird prototype
-    Object.assign(Bird.prototype, CanFly); // [30, 31]
+const eagle = new Bird('Eagle');
+eagle.fly(); // Eagle is flying!
 
-    const eagle = new Bird("Eagle");
-    eagle.fly(); // Eagle is flying!
-
-    // Add swimming behavior to Bird prototype (multiple mixins)
-    Object.assign(Bird.prototype, CanSwim);
-    eagle.swim(); // Eagle is swimming!
+// Add swimming behavior to Bird prototype (multiple mixins)
+Object.assign(Bird.prototype, CanSwim);
+eagle.swim(); // Eagle is swimming!
 ```
+
 ### The State Pattern: Managing Complex Behavior
 
 - **Purpose:** The State Pattern allows an object to alter its behavior when its internal state changes, making it appear as if the object has changed its class. This pattern is used to manage complex conditional logic that would otherwise result in large, unwieldy `if/else` or `switch` statements, leading to bloated and hard-to-maintain code.
@@ -882,72 +921,74 @@ JavaScript's flexible object model allows for the effective implementation of va
 **Code Example (Fan State):**
 
 ```js
+// State Interface (implicitly defined by common methods)
+class FanState {
+  constructor(fan) {
+    this.fan = fan;
+  }
+  clickButton() {
+    throw new Error(
+      "Method 'clickButton()' must be implemented by concrete states."
+    );
+  }
+}
 
-    // State Interface (implicitly defined by common methods)
-    class FanState {
-      constructor(fan) {
-        this.fan = fan;
-      }
-      clickButton() {
-        throw new Error("Method 'clickButton()' must be implemented by concrete states.");
-      }
-    }
+// Concrete States [34]
+class OffFanState extends FanState {
+  clickButton() {
+    console.log('Fan: Turning on to Low Speed.');
+    this.fan.setState(this.fan.lowSpeedState);
+  }
+}
 
-    // Concrete States [34]
-    class OffFanState extends FanState {
-      clickButton() {
-        console.log("Fan: Turning on to Low Speed.");
-        this.fan.setState(this.fan.lowSpeedState);
-      }
-    }
+class LowSpeedFanState extends FanState {
+  clickButton() {
+    console.log('Fan: Increasing to Medium Speed.');
+    this.fan.setState(this.fan.mediumSpeedState);
+  }
+}
 
-    class LowSpeedFanState extends FanState {
-      clickButton() {
-        console.log("Fan: Increasing to Medium Speed.");
-        this.fan.setState(this.fan.mediumSpeedState);
-      }
-    }
+class MediumSpeedFanState extends FanState {
+  clickButton() {
+    console.log('Fan: Increasing to High Speed.');
+    this.fan.setState(this.fan.highSpeedState);
+  }
+}
 
-    class MediumSpeedFanState extends FanState {
-      clickButton() {
-        console.log("Fan: Increasing to High Speed.");
-        this.fan.setState(this.fan.highSpeedState);
-      }
-    }
+class HighSpeedFanState extends FanState {
+  clickButton() {
+    console.log('Fan: Turning off.');
+    this.fan.setState(this.fan.offFanState);
+  }
+}
 
-    class HighSpeedFanState extends FanState {
-      clickButton() {
-        console.log("Fan: Turning off.");
-        this.fan.setState(this.fan.offFanState);
-      }
-    }
+// Context [34]
+class Fan {
+  constructor() {
+    this.offFanState = new OffFanState(this);
+    this.lowSpeedState = new LowSpeedFanState(this);
+    this.mediumSpeedState = new MediumSpeedFanState(this);
+    this.highSpeedState = new HighSpeedFanState(this);
+    this.presentState = this.offFanState; // Initial state
+  }
 
-    // Context [34]
-    class Fan {
-      constructor() {
-        this.offFanState = new OffFanState(this);
-        this.lowSpeedState = new LowSpeedFanState(this);
-        this.mediumSpeedState = new MediumSpeedFanState(this);
-        this.highSpeedState = new HighSpeedFanState(this);
-        this.presentState = this.offFanState; // Initial state
-      }
+  setState(newState) {
+    this.presentState = newState;
+  }
 
-      setState(newState) {
-        this.presentState = newState;
-      }
+  clickButton() {
+    this.presentState.clickButton(); // Delegate to current state
+  }
+}
 
-      clickButton() {
-        this.presentState.clickButton(); // Delegate to current state
-      }
-    }
-
-    const myFan = new Fan();
-    myFan.clickButton(); // Fan: Turning on to Low Speed.
-    myFan.clickButton(); // Fan: Increasing to Medium Speed.
-    myFan.clickButton(); // Fan: Increasing to High Speed.
-    myFan.clickButton(); // Fan: Turning off.
-    myFan.clickButton(); // Fan: Turning on to Low Speed.
+const myFan = new Fan();
+myFan.clickButton(); // Fan: Turning on to Low Speed.
+myFan.clickButton(); // Fan: Increasing to Medium Speed.
+myFan.clickButton(); // Fan: Increasing to High Speed.
+myFan.clickButton(); // Fan: Turning off.
+myFan.clickButton(); // Fan: Turning on to Low Speed.
 ```
+
 ## Conclusion: Beyond the Basics
 
 This exploration of advanced JavaScript object concepts demonstrates the profound capabilities inherent in the language's object model. From granular control over property behavior using `Object.defineProperty()` and dynamic access with getters and setters, to the foundational understanding of prototypal inheritance and the powerful metaprogramming afforded by `Proxy` and `Reflect`, JavaScript objects offer far more than simple data storage.
