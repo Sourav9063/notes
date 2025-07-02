@@ -18,7 +18,7 @@ type Order struct {
 	ShippingInfo ShippingInfo `json:"shippingInfo"`
 	OrderDate    time.Time    `json:"orderDate"` // Use time.Time for dates
 	Status       string       `json:"status"`
-	Notes        *string      `json:"notes"`   // Use *string for nullable strings
+	Notes        *string      `json:"notes"` // Use *string for nullable strings
 	IsGift       bool         `json:"isGift"`
 }
 
@@ -61,8 +61,8 @@ type Item struct {
 
 // Availability represents the availability object within an item
 type Availability struct {
-	InStock             bool       `json:"inStock"`
-	WarehouseLocation   string     `json:"warehouseLocation,omitempty"`
+	InStock              bool       `json:"inStock"`
+	WarehouseLocation    string     `json:"warehouseLocation,omitempty"`
 	EstimatedRestockDate *time.Time `json:"estimatedRestockDate,omitempty"`
 }
 
@@ -77,10 +77,10 @@ type PaymentInfo struct {
 
 // ShippingInfo represents the shippingInfo object
 type ShippingInfo struct {
-	Method              string    `json:"method"`
-	Cost                float64   `json:"cost"`
-	TrackingNumber      string    `json:"trackingNumber"`
-	Status              string    `json:"status"`
+	Method                string    `json:"method"`
+	Cost                  float64   `json:"cost"`
+	TrackingNumber        string    `json:"trackingNumber"`
+	Status                string    `json:"status"`
 	EstimatedDeliveryDate time.Time `json:"estimatedDeliveryDate"`
 }
 
@@ -147,7 +147,7 @@ func main() {
       "features": ["4-port", "Power Delivery"],
       "availability": {
         "inStock": false,
-        "estimatedRestockDate": "2025-07-15"
+        "estimatedRestockDate": "2025-07-02T12:00:00Z"
       }
     }
   ],
@@ -163,7 +163,7 @@ func main() {
     "cost": 10.00,
     "trackingNumber": "TRACK-XYZ-12345",
     "status": "Shipped",
-    "estimatedDeliveryDate": "2025-07-05"
+    "estimatedDeliveryDate": "2025-07-02T12:00:00Z"
   },
   "orderDate": "2025-07-02T12:00:00Z",
   "status": "Processing",
