@@ -397,38 +397,63 @@ _Apply after an operator like `d`, `c`, `y`._
 | ------------ | ------------------------------ |
 | `ctrl+n`/`p` | Focus Next/Previous Suggestion |
 
-## AI Tool Integration (Copilot, Codeium, Roo-Cline)
-
-| Tool      | Key                 | Action                                       |
-| --------- | ------------------- | -------------------------------------------- |
-| Copilot   | `alt+e o`           | Generate Code (`github.copilot.generate`)    |
-| Copilot   | `alt+e i`           | Start/Close Inline Chat / Terminal Chat      |
-| Copilot   | `alt+e j`/`k`       | Cycle Panel Solutions Prev/Next              |
-| Copilot   | `alt+e a`           | Accept Panel Solution                        |
-| Copilot   | `alt+e e`           | Open Edit Session in Chat Panel              |
-| Copilot   | `alt+e alt+c`       | Focus Copilot Chat Panel                     |
-| Copilot   | `alt+e alt+e`       | Focus Copilot Edits Panel                    |
-| Copilot   | `alt+e alt+v`       | Attach Selection to Chat                     |
-| Copilot   | `alt+e v`           | Attach Selection to Edits                    |
-| Copilot   | `alt+e c`           | Quick Open >chat                             |
-| Copilot   | `alt+e shift+c`     | Open Chat in Editor                          |
-| Copilot   | `alt+o e`           | Quick Open >chat                             |
-| Copilot   | `alt+o shift+e`     | Quick Open >copilot                          |
-| Codeium   | `alt+u c`           | Open Codeium Chat View / Quick Open >codeium |
-| Codeium   | `alt+o u`           | Open Codeium Command Palette                 |
-| Codeium   | `alt+u alt+l`       | Chat About Block                             |
-| Codeium   | `alt+u alt+a`       | Accept Diff Action                           |
-| Codeium   | `alt+u alt+f`       | Follow Up Diff Action                        |
-| Codeium   | `alt+u alt+r`       | Reject Diff Action                           |
-| Codeium   | `alt+u alt+c`       | Cancel Command                               |
-| Codeium   | `alt+u v`           | Focus Codeium View                           |
-| Roo-Cline | `alt+v a`           | Add Selection/File to Context                |
-| Roo-Cline | `alt+v e`           | Explain Code                                 |
-| Roo-Cline | `alt+v f`           | Fix Code                                     |
-| Roo-Cline | `alt+v i`           | Improve Code                                 |
-| Roo-Cline | `alt+v n`           | New Task (Plus Button Clicked)               |
-| Roo-Cline | `alt+v alt+n`       | New Task (`roo-cline.newTask`)               |
-| Roo-Cline | `alt+v o`           | Popout Chat Window                           |
-| Roo-Cline | `alt+v p`           | Show Prompts                                 |
-| Roo-Cline | `alt+f v`           | Focus Roo-Cline Input                        |
-| Roo-Cline | `alt+m r`/`alt+m v` | Focus Roo-Cline Activity Bar View            |
+## Leader Keybindings
+| Key | Action |
+|---|---|
+| `<leader>e` | Toggle Explorer |
+| `<leader>fe` | Find in files |
+| `<leader>ff` | Search in files |
+| `<leader>fo` | Quick text search |
+| `<leader>fO` | Open new search editor |
+| `<leader>fa` | Select all occurrences of find match |
+| `<leader>fs` | Go to source control |
+| `<leader>t` | Toggle terminal |
+| `<leader>o` | Go to file |
+| `<leader>p` | Show all commands |
+| `<leader>s` | Go to symbol in file |
+| `<leader>ss` | Go to symbol in workspace |
+| `<leader>so` | Focus outline |
+| `<leader>j` | Open previous recently used editor |
+| `<leader>k` | Open next recently used editor |
+| `<leader>J` | Open previous editor from history |
+| `<leader>wv` | Split editor right |
+| `<leader>ws` | Split editor down |
+| `<leader>wk` | Navigate up |
+| `<leader>wj` | Navigate down |
+| `<leader>wh` | Navigate left |
+| `<leader>wl` | Navigate right |
+| `<leader>we` | Minimize other editors |
+| `<leader>wE` | Minimize other editors and hide sidebar |
+| `<leader>wM` | Maximize editor and hide sidebar |
+| `<leader>wm` | Toggle maximize editor group |
+| `<leader>wr` | Even editor widths |
+| `<leader>wt` | Toggle editor widths |
+| `<leader>wmk` | Move editor to above group |
+| `<leader>wmj` | Move editor to below group |
+| `<leader>wmh` | Move editor to left group |
+| `<leader>wml` | Move editor to right group |
+| `<leader>wo` | Toggle editor group lock |
+| `<leader>wP` | Pin editor |
+| `<leader>wU` | Unpin editor |
+| `<leader>w1` | Focus first editor group |
+| `<leader>w2` | Focus second editor group |
+| `<leader>w3` | Focus third editor group |
+| `<leader>w4` | Focus fourth editor group |
+| `<leader>wH` | New group left and quick open |
+| `<leader>wL` | New group right and quick open |
+| `<leader>wK` | New group above and quick open |
+| `<leader>wJ` | New group below and quick open |
+| `<leader>wn` | Focus next group |
+| `<leader>wp` | Focus previous group |
+| `<leader>cr` | Rename |
+| `<leader>ca` | Source action |
+| `<leader>cq` | Quick fix |
+| `<leader>a` | Quick fix |
+| `<leader>=` | Format document |
+| `<leader>=s` | Format selection |
+| `<leader>r` | Rename |
+| `<leader>bq` | Close active editor |
+| `<leader>br` | Reopen closed editor |
+| `<leader>bQ` | Close all groups |
+| `<leader>cn` | Add selection to next find match |
+| `<leader>cp` | Add selection to previous find match |
