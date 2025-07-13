@@ -1,7 +1,9 @@
 # The Ultimate SQL Tutorial | Blog | CodeWithHarry
 "MySQL is a database management system. A Database Management System (DBMS) is software that interacts with end users, applications, and the database itself to capture and analyze data. "
+
 https://www.codewithharry.com/blogpost/the-ultimate-sql-course
 https://youtu.be/yE6tIle64tU
+
 Installing MySQL
 ----------------
 
