@@ -1,2 +1,313 @@
 # Notes
-# cheat-sheets
+
+This repository is a personal knowledge base for various programming topics.
+
+## Repository Structure
+
+### git
+- scenario
+  - [move-to-origin-branch](git/scenario/move-to-origin-branch.md)
+  - [ssh-github](git/scenario/ssh-github.md)
+
+### go
+- Effective-Go
+  - [README](go/Effective-Go/README.md)
+  - [README_bn](go/Effective-Go/README_bn.md)
+- design-pattern-architecture
+  - [hexagonal_architecture](go/design-pattern-architecture/hexagonal_architecture.md)
+- golang-for-nodejs-developers
+  - [README](go/golang-for-nodejs-developers/README.md)
+- packages
+  - viper
+    - [README](go/packages/viper/README.md)
+- quirky
+  - [[]UserVS[]*User](go/quirky/[]UserVS[]*User.md)
+  - [sth.(type)](go/quirky/sth.(type).md)
+  - [type_conversion](go/quirky/type_conversion.md)
+
+### LLM
+- [README](LLM/README.md)
+
+### SQL
+- [Code-with-Harry](SQL/Code-with-Harry.md)
+
+### tailwind
+- [README](tailwind/README.md)
+- [cheat-sheet](tailwind/cheat-sheet/README.md)
+- [tailwind-to-css](tailwind/tailwind-to-css/README.md)
+
+### vim
+- [vscode-vim](vim/vscode-vim.md)
+- [vscode-vim-roadmap](vim/vscode-vim-roadmap.md)
+
+### vue
+- nuxt
+  - [README](vue/nuxt/README.md)
+  - data-fetching
+    - [useAsyncData-with-cookies](vue/nuxt/data-fetching/useAsyncData-with-cookies.md)
+- pinia
+  - [README](vue/pinia/README.md)
+- primevue
+  - [README](vue/primevue/README.md)
+- vue-3
+  - [README](vue/vue-3/README.md)
+  - advanced
+    - [README](vue/vue-3/advanced/README.md)
+
+### javascript
+- 33-js-concepts
+  - [CODE_OF_CONDUCT](javascript/33-js-concepts/CODE_OF_CONDUCT.md)
+  - [CONTRIBUTING](javascript/33-js-concepts/CONTRIBUTING.md)
+  - [README](javascript/33-js-concepts/README.md)
+- design-pattern
+  - [functional-oop](javascript/design-pattern/functional-oop.md)
+  - [functional](javascript/design-pattern/functional.md)
+  - [README](javascript/design-pattern/README.md)
+  - [v1](javascript/design-pattern/v1.md)
+  - [v2](javascript/design-pattern/v2.md)
+  - [v3](javascript/design-pattern/v3.md)
+  - [v4_oop_and_fn](javascript/design-pattern/v4_oop_and_fn.md)
+  - [v5_oop_and_fn](javascript/design-pattern/v5_oop_and_fn.md)
+- Object
+  - [README](javascript/Object/README.md)
+  - [READMEold](javascript/Object/READMEold.md)
+- pdf
+  - [README](javascript/pdf/README.md)
+- javascript-algorithms
+  - [README](javascript/javascript-algorithms/README.md)
+  - [BACKERS](javascript/javascript-algorithms/BACKERS.md)
+  - [CODE_OF_CONDUCT](javascript/javascript-algorithms/CODE_OF_CONDUCT.md)
+  - [CONTRIBUTING](javascript/javascript-algorithms/CONTRIBUTING.md)
+  - src
+    - algorithms
+      - cryptography
+        - caesar-cipher
+          - [README](javascript/javascript-algorithms/src/algorithms/cryptography/caesar-cipher/README.md)
+        - hill-cipher
+          - [README](javascript/javascript-algorithms/src/algorithms/cryptography/hill-cipher/README.md)
+        - polynomial-hash
+          - [README](javascript/javascript-algorithms/src/algorithms/cryptography/polynomial-hash/README.md)
+        - rail-fence-cipher
+          - [README](javascript/javascript-algorithms/src/algorithms/cryptography/rail-fence-cipher/README.md)
+      - graph
+        - articulation-points
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/articulation-points/README.md)
+        - bellman-ford
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/bellman-ford/README.md)
+        - breadth-first-search
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/breadth-first-search/README.md)
+        - bridges
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/bridges/README.md)
+        - detect-cycle
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/detect-cycle/README.md)
+        - depth-first-search
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/depth-first-search/README.md)
+        - dijkstra
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/dijkstra/README.md)
+        - eulerian-path
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/eulerian-path/README.md)
+        - floyd-warshall
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/floyd-warshall/README.md)
+        - hamiltonian-cycle
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/hamiltonian-cycle/README.md)
+        - kruskal
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/kruskal/README.md)
+        - prim
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/prim/README.md)
+        - strongly-connected-components
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/strongly-connected-components/README.md)
+        - topological-sorting
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/topological-sorting/README.md)
+        - travelling-salesman
+          - [README](javascript/javascript-algorithms/src/algorithms/graph/travelling-salesman/README.md)
+      - image-processing
+        - seam-carving
+          - [README](javascript/javascript-algorithms/src/algorithms/image-processing/seam-carving/README.md)
+      - linked-list
+        - reverse-traversal
+          - [README](javascript/javascript-algorithms/src/algorithms/linked-list/reverse-traversal/README.md)
+        - traversal
+          - [README](javascript/javascript-algorithms/src/algorithms/linked-list/traversal/README.md)
+      - math
+        - binary-floating-point
+          - [README](javascript/javascript-algorithms/src/algorithms/math/binary-floating-point/README.md)
+        - bits
+          - [README](javascript/javascript-algorithms/src/algorithms/math/bits/README.md)
+        - complex-number
+          - [README](javascript/javascript-algorithms/src/algorithms/math/complex-number/README.md)
+        - euclidean-algorithm
+          - [README](javascript/javascript-algorithms/src/algorithms/math/euclidean-algorithm/README.md)
+        - euclidean-distance
+          - [README](javascript/javascript-algorithms/src/algorithms/math/euclidean-distance/README.md)
+        - factorial
+          - [README](javascript/javascript-algorithms/src/algorithms/math/factorial/README.md)
+        - fast-powering
+          - [README](javascript/javascript-algorithms/src/algorithms/math/fast-powering/README.md)
+        - fibonacci
+          - [README](javascript/javascript-algorithms/src/algorithms/math/fibonacci/README.md)
+        - fourier-transform
+          - [README](javascript/javascript-algorithms/src/algorithms/math/fourier-transform/README.md)
+        - horner-method
+          - [README](javascript/javascript-algorithms/src/algorithms/math/horner-method/README.md)
+        - integer-partition
+          - [README](javascript/javascript-algorithms/src/algorithms/math/integer-partition/README.md)
+        - is-power-of-two
+          - [README](javascript/javascript-algorithms/src/algorithms/math/is-power-of-two/README.md)
+        - least-common-multiple
+          - [README](javascript/javascript-algorithms/src/algorithms/math/least-common-multiple/README.md)
+        - liu-hui
+          - [README](javascript/javascript-algorithms/src/algorithms/math/liu-hui/README.md)
+        - matrix
+          - [README](javascript/javascript-algorithms/src/algorithms/math/matrix/README.md)
+        - pascal-triangle
+          - [README](javascript/javascript-algorithms/src/algorithms/math/pascal-triangle/README.md)
+        - primality-test
+          - [README](javascript/javascript-algorithms/src/algorithms/math/primality-test/README.md)
+        - prime-factors
+          - [README](javascript/javascript-algorithms/src/algorithms/math/prime-factors/README.md)
+        - radian
+          - [README](javascript/javascript-algorithms/src/algorithms/math/radian/README.md)
+        - sieve-of-eratosthenes
+          - [README](javascript/javascript-algorithms/src/algorithms/math/sieve-of-eratosthenes/README.md)
+        - square-root
+          - [README](javascript/javascript-algorithms/src/algorithms/math/square-root/README.md)
+      - ml
+        - k-means
+          - [README](javascript/javascript-algorithms/src/algorithms/ml/k-means/README.md)
+        - knn
+          - [README](javascript/javascript-algorithms/src/algorithms/ml/knn/README.md)
+      - search
+        - binary-search
+          - [README](javascript/javascript-algorithms/src/algorithms/search/binary-search/README.md)
+        - interpolation-search
+          - [README](javascript/javascript-algorithms/src/algorithms/search/interpolation-search/README.md)
+        - jump-search
+          - [README](javascript/javascript-algorithms/src/algorithms/search/jump-search/README.md)
+        - linear-search
+          - [README](javascript/javascript-algorithms/src/algorithms/search/linear-search/README.md)
+      - sets
+        - cartesian-product
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/cartesian-product/README.md)
+        - combination-sum
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/combination-sum/README.md)
+        - combinations
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/combinations/README.md)
+        - fisher-yates
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/fisher-yates/README.md)
+        - knapsack-problem
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/knapsack-problem/README.md)
+        - longest-common-subsequence
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/longest-common-subsequence/README.md)
+        - longest-increasing-subsequence
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/longest-increasing-subsequence/README.md)
+        - maximum-subarray
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/maximum-subarray/README.md)
+        - permutations
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/permutations/README.md)
+        - power-set
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/power-set/README.md)
+        - shortest-common-supersequence
+          - [README](javascript/javascript-algorithms/src/algorithms/sets/shortest-common-supersequence/README.md)
+      - sorting
+        - bubble-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/bubble-sort/README.md)
+        - bucket-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/bucket-sort/README.md)
+        - counting-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/counting-sort/README.md)
+        - heap-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/heap-sort/README.md)
+        - insertion-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/insertion-sort/README.md)
+        - merge-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/merge-sort/README.md)
+        - quick-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/quick-sort/README.md)
+        - radix-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/radix-sort/README.md)
+        - selection-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/selection-sort/README.md)
+        - shell-sort
+          - [README](javascript/javascript-algorithms/src/algorithms/sorting/shell-sort/README.md)
+      - stack
+        - valid-parentheses
+          - [README](javascript/javascript-algorithms/src/algorithms/stack/valid-parentheses/README.md)
+      - statistics
+        - weighted-random
+          - [README](javascript/javascript-algorithms/src/algorithms/statistics/weighted-random/README.md)
+      - string
+        - hamming-distance
+          - [README](javascript/javascript-algorithms/src/algorithms/string/hamming-distance/README.md)
+        - knuth-morris-pratt
+          - [README](javascript/javascript-algorithms/src/algorithms/string/knuth-morris-pratt/README.md)
+        - levenshtein-distance
+          - [README](javascript/javascript-algorithms/src/algorithms/string/levenshtein-distance/README.md)
+        - longest-common-substring
+          - [README](javascript/javascript-algorithms/src/algorithms/string/longest-common-substring/README.md)
+        - palindrome
+          - [README](javascript/javascript-algorithms/src/algorithms/string/palindrome/README.md)
+        - rabin-karp
+          - [README](javascript/javascript-algorithms/src/algorithms/string/rabin-karp/README.md)
+        - regular-expression-matching
+          - [README](javascript/javascript-algorithms/src/algorithms/string/regular-expression-matching/README.md)
+        - z-algorithm
+          - [README](javascript/javascript-algorithms/src/algorithms/string/z-algorithm/README.md)
+      - tree
+        - breadth-first-search
+          - [README](javascript/javascript-algorithms/src/algorithms/tree/breadth-first-search/README.md)
+        - depth-first-search
+          - [README](javascript/javascript-algorithms/src/algorithms/tree/depth-first-search/README.md)
+      - uncategorized
+        - best-time-to-buy-sell-stocks
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/best-time-to-buy-sell-stocks/README.md)
+        - hanoi-tower
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/hanoi-tower/README.md)
+        - jump-game
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/jump-game/README.md)
+        - knight-tour
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/knight-tour/README.md)
+        - n-queens
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/n-queens/README.md)
+        - rain-terraces
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/rain-terraces/README.md)
+        - recursive-staircase
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/recursive-staircase/README.md)
+        - square-matrix-rotation
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/square-matrix-rotation/README.md)
+        - unique-paths
+          - [README](javascript/javascript-algorithms/src/algorithms/uncategorized/unique-paths/README.md)
+    - data-structures
+      - bloom-filter
+        - [README](javascript/javascript-algorithms/src/data-structures/bloom-filter/README.md)
+      - disjoint-set
+        - [README](javascript/javascript-algorithms/src/data-structures/disjoint-set/README.md)
+      - doubly-linked-list
+        - [README](javascript/javascript-algorithms/src/data-structures/doubly-linked-list/README.md)
+      - graph
+        - [README](javascript/javascript-algorithms/src/data-structures/graph/README.md)
+      - hash-table
+        - [README](javascript/javascript-algorithms/src/data-structures/hash-table/README.md)
+      - heap
+        - [README](javascript/javascript-algorithms/src/data-structures/heap/README.md)
+      - linked-list
+        - [README](javascript/javascript-algorithms/src/data-structures/linked-list/README.md)
+      - lru-cache
+        - [README](javascript/javascript-algorithms/src/data-structures/lru-cache/README.md)
+      - priority-queue
+        - [README](javascript/javascript-algorithms/src/data-structures/priority-queue/README.md)
+      - queue
+        - [README](javascript/javascript-algorithms/src/data-structures/queue/README.md)
+      - tree
+        - [README](javascript/javascript-algorithms/src/data-structures/tree/README.md)
+        - avl-tree
+          - [README](javascript/javascript-algorithms/src/data-structures/tree/avl-tree/README.md)
+        - binary-search-tree
+          - [README](javascript/javascript-algorithms/src/data-structures/tree/binary-search-tree/README.md)
+        - fenwick-tree
+          - [README](javascript/javascript-algorithms/src/data-structures/tree/fenwick-tree/README.md)
+        - red-black-tree
+          - [README](javascript/javascript-algorithms/src/data-structures/tree/red-black-tree/README.md)
+        - segment-tree
+          - [README](javascript/javascript-algorithms/src/data-structures/tree/segment-tree/README.md)
+      - trie
+        - [README](javascript/javascript-algorithms/src/data-structures/trie/README.md)
