@@ -2060,3 +2060,542 @@ A plugin system allows third-party developers to extend your application's funct
     };
     ```
 4.  **Sandbox (Security)**: For untrusted plugins, you might run them in a sandboxed environment (like a Web Worker or an iframe) to limit their access to the main application and global objects.
+
+## 1\. The Event Loop and Asynchronous JavaScript (Continued)
+
+### 101\. What is `requestIdleCallback` and how does it differ from `setTimeout`?
+
+**`requestIdleCallback`** is a browser API that queues a function to be called during a browser's idle periods. This is perfect for running low-priority, background tasks without interfering with high-priority work like animations or user input.
+
+  * **`requestIdleCallback`**: The browser decides when to run the callback. It might be delayed significantly or not run at all if the browser is constantly busy. It's for **non-essential** work.
+  * **`setTimeout(fn, 0)`**: The callback is guaranteed to run on the next macrotask queue. It's for work that needs to be done asynchronously but **as soon as possible**.
+
+<!-- end list -->
+
+```javascript
+// Use for low-priority tasks like sending analytics
+requestIdleCallback((deadline) => {
+  // The deadline object tells you how much idle time you have left
+  while (deadline.timeRemaining() > 0) {
+    // do some work...
+  }
+  console.log('Idle callback executed.');
+});
+
+// Use for tasks that need to happen right after the current script
+setTimeout(() => {
+  console.log('setTimeout executed.');
+}, 0);
+```
+
+### 102\. What are "async stack traces" and how do they help with debugging?
+
+In the past, debugging asynchronous code was difficult because the call stack would be cleared between async operations. If an error occurred inside a `.then()` block, you wouldn't know what caused the promise to be initiated.
+
+**Async stack traces** are a modern browser feature that "stitches together" the stack from different asynchronous parts. This gives you the full story of how an error occurred, making it much easier to debug promises and `async/await`.
+
+```javascript
+function main() {
+  doAsyncTask();
+}
+
+function doAsyncTask() {
+  Promise.resolve().then(() => {
+    throw new Error("💥 Boom!");
+  });
+}
+
+main();
+
+// Modern Browser Console Output:
+// Uncaught (in promise) Error: 💥 Boom!
+//     at <anonymous>:10:11    // Error location
+//     at async doAsyncTask   // Async context is preserved
+//     at async main          // You can trace it back to the origin
+```
+
+### 103\. Explain what happens if a microtask continuously adds another microtask to the queue.
+
+This is known as **microtask queue starvation**. The event loop must process all microtasks before it can move on to the next macrotask (like rendering or handling user input). If a microtask keeps adding new microtasks, the queue will never become empty. As a result, the browser's main thread will be completely blocked, freezing the UI and making the page unresponsive.
+
+```javascript
+function starve() {
+  console.log('Microtask running...');
+  Promise.resolve().then(starve); // Immediately queue another one
+}
+
+// This will freeze the tab.
+starve();
+```
+
+### 104\. What is a "zombie timer"?
+
+A zombie timer is a `setTimeout` or `setInterval` that continues to run in the background even after the component or object that created it has been destroyed. This can lead to memory leaks and unexpected errors when the timer's callback tries to access variables or elements that no longer exist.
+
+**Solution**: Always clear your timers in a cleanup function. In React, this is done in the return function of `useEffect`.
+
+```javascript
+// In a React component
+useEffect(() => {
+  const timerId = setInterval(() => {
+    console.log('Tick!');
+    // If this component unmounts, this timer becomes a "zombie"
+    // and might try to update state on an unmounted component.
+  }, 1000);
+
+  // The cleanup function
+  return () => {
+    clearInterval(timerId); // Prevents the zombie timer
+    console.log('Timer cleared.');
+  };
+}, []);
+```
+
+### 105\. What is the difference between a Promise and an Observable?
+
+Promises and Observables both handle asynchronous operations, but they have key differences.
+
+  * **Promise**: Handles a **single event** (the eventual completion or failure). It is **not cancellable** (once created, it will run). Promises are eager (they start executing immediately).
+  * **Observable**: Handles a **stream of multiple values** over time (like user clicks, WebSocket data, etc.). They are **cancellable** (you can unsubscribe to stop listening). Observables are lazy (they don't start emitting values until you subscribe).
+
+<!-- end list -->
+
+```javascript
+// Observables are not native to JS, this is pseudo-code for a library like RxJS
+import { Observable } from 'rxjs';
+
+const myObservable = new Observable(subscriber => {
+  subscriber.next(1); // Emits a value
+  subscriber.next(2);
+  setTimeout(() => {
+    subscriber.next(3);
+    subscriber.complete();
+  }, 1000);
+});
+
+const subscription = myObservable.subscribe({
+  next: x => console.log(x),
+  complete: () => console.log('Done!')
+});
+
+// You can cancel it
+// subscription.unsubscribe();
+```
+
+### 106\. How would you create a cancellable promise?
+
+Native promises are not cancellable. However, you can wrap a promise to add cancellation logic. A common pattern is to use an `AbortController`, which is the same API used to cancel `fetch` requests.
+
+```javascript
+function makeCancellable(promise, signal) {
+  return new Promise((resolve, reject) => {
+    // If the signal is already aborted, reject immediately.
+    if (signal.aborted) {
+      return reject(new DOMException('Aborted', 'AbortError'));
+    }
+
+    const onAbort = () => {
+      // Clean up listeners
+      signal.removeEventListener('abort', onAbort);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+
+    signal.addEventListener('abort', onAbort);
+
+    promise.then(
+      val => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(val);
+      },
+      err => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      }
+    );
+  });
+}
+
+// Usage
+const controller = new AbortController();
+const { signal } = controller;
+
+const longFetch = new Promise(res => setTimeout(() => res('Data!'), 5000));
+const cancellableFetch = makeCancellable(longFetch, signal);
+
+cancellableFetch
+  .then(console.log)
+  .catch(err => console.error(err.name)); // 'AbortError'
+
+// After 1 second, cancel the operation
+setTimeout(() => controller.abort(), 1000);
+```
+
+### 107\. What are the pros and cons of top-level `await`?
+
+**Top-level `await`** allows you to use `await` outside of an `async` function, at the top level of an ES module.
+
+  * **Pros**:
+
+      * **Simplified Initialization**: Great for fetching configuration or dependencies before any other code in the module runs.
+      * **Dynamic Dependencies**: Can be used to conditionally load modules.
+      * **Cleaner Code**: Avoids wrapping initialization logic in an `async IIFE`.
+
+  * **Cons**:
+
+      * **Blocking Module Execution**: It can block the execution and instantiation of other modules that depend on it, potentially slowing down application startup if not used carefully.
+      * **ES Modules Only**: It only works in ES modules, not in classic scripts.
+
+### 108\. What is `setImmediate` in Node.js?
+
+`setImmediate` is a Node.js-specific function that schedules a callback to run in the **check phase** of the event loop. This phase runs right after the poll phase (where I/O events are handled).
+
+  * **`setTimeout(fn, 0)`**: Runs in the **timers phase**.
+  * **`setImmediate(fn)`**: Runs in the **check phase**.
+
+The order between them can be unpredictable if they are called from the main module, but when called from within an I/O callback, `setImmediate` is **always** executed before any `setTimeout`.
+
+```javascript
+// In a Node.js file
+const fs = require('fs');
+
+fs.readFile(__filename, () => {
+  // This is an I/O callback
+  setTimeout(() => console.log('setTimeout'), 0);
+  setImmediate(() => console.log('setImmediate'));
+});
+
+// Output will always be:
+// setImmediate
+// setTimeout
+```
+
+### 109\. How does an `async` function implicitly handle errors?
+
+When you write an `async` function, JavaScript implicitly wraps the entire body in a `try...catch` block. If any error is thrown inside the function (or from a promise that you `await`), it is caught, and the promise returned by the `async` function is **rejected** with that error.
+
+```javascript
+async function fetchData() {
+  // This implicitly returns a promise
+  throw new Error("Failed to fetch");
+}
+
+// Is roughly equivalent to:
+function fetchDataEquivalent() {
+  return new Promise((resolve, reject) => {
+    try {
+      // Your function body would be here...
+      throw new Error("Failed to fetch");
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+fetchData().catch(err => console.log(err.message)); // "Failed to fetch"
+```
+
+### 110\. Can you explain "blocking the event loop"?
+
+**Blocking the event loop** means executing a long-running, synchronous task on the main thread. Because JavaScript is single-threaded, while this task is running, the event loop is "blocked." It cannot process anything else—no user input (clicks, scrolls), no rendering updates, no `setTimeout` callbacks, nothing. This leads to a frozen and unresponsive webpage.
+
+```javascript
+function blockTheLoop() {
+  console.log('Starting a long task...');
+  // This is a synchronous, long-running operation
+  const start = Date.now();
+  while (Date.now() - start < 5000) {
+    // Doing nothing for 5 seconds...
+  }
+  console.log('Task finished.');
+}
+
+// The UI will be frozen for 5 seconds when you call this.
+blockTheLoop();
+```
+
+-----
+
+## 2\. Browser Internals and Networking (Continued)
+
+### 111\. What is the Shadow DOM?
+
+The **Shadow DOM** is a browser technology that allows you to encapsulate a piece of the DOM. It creates a hidden, separate DOM tree attached to an element. Styles and scripts inside the Shadow DOM are isolated from the main document's DOM (the "Light DOM"). This is the foundation of Web Components and prevents CSS styles from leaking in or out.
+
+### 112\. Explain the role of a Service Worker.
+
+A **Service Worker** is a script that the browser runs in the background, separate from a web page. It acts as a programmable network proxy, allowing you to intercept and control how network requests from your application are handled.
+
+Key use cases:
+
+  * **Offline Support**: Caching assets and API responses to make the application work offline.
+  * **Push Notifications**: Receiving push messages from a server, even when the app is not open.
+  * **Background Sync**: Deferring actions until the user has a stable internet connection.
+
+### 113\. What is the difference between WebSockets and Server-Sent Events (SSE)?
+
+Both provide real-time updates from the server, but they are used for different scenarios.
+
+  * **WebSockets**: Provide a **bi-directional**, full-duplex communication channel. Both the client and server can send messages to each other at any time. Ideal for applications like chat apps, online games, and collaborative editing.
+  * **Server-Sent Events (SSE)**: Provide a **uni-directional** channel. Only the server can send data to the client. SSE is simpler to implement and uses standard HTTP. It's perfect for things like live stock tickers, news feeds, or notifications where the client only needs to receive updates.
+
+### 114\. What is IndexedDB and when would you use it?
+
+**IndexedDB** is a low-level, transactional database system built into the browser. It's a key-value store that allows you to store large amounts of structured data (including files/blobs) persistently on the client-side.
+
+You would use it over `localStorage` when:
+
+  * You need to store a **large amount of data** (localStorage is typically limited to 5-10MB).
+  * You need to **query or index** the data for efficient lookups.
+  * You need **transactional** support to ensure data integrity.
+  * You need to store complex JavaScript objects without serializing them to strings.
+
+### 115\. What is HTTP Strict Transport Security (HSTS)?
+
+**HSTS** is a security policy mechanism that helps protect websites against protocol downgrade attacks and cookie hijacking. When a user visits a site with an HSTS header, the browser is instructed to *only* communicate with that site over HTTPS for a specified period. Any future attempts to access it using HTTP will be automatically converted to HTTPS by the browser.
+
+### 116\. What's the difference between a "blocking" and "non-blocking" resource in the rendering path?
+
+  * **Blocking Resource**: A resource that pauses the parsing of the HTML document. By default, `<script>` tags without `async` or `defer` and `<link rel="stylesheet">` tags are render-blocking. The browser must download, parse, and execute them before it can continue building the DOM and render the page.
+  * **Non-Blocking Resource**: A resource that does not pause HTML parsing. Images (`<img>`), scripts with `async` or `defer`, and stylesheets loaded asynchronously do not block the initial render.
+
+### 117\. How does a browser handle a DNS prefetch?
+
+**DNS prefetching** is a performance optimization where the browser proactively performs DNS lookups for domains that the user might visit in the near future. You can hint to the browser to do this using a `<link>` tag. This reduces latency when the user eventually clicks a link to that domain because the IP address has already been resolved.
+
+```html
+<link rel="dns-prefetch" href="//assets.example.com">
+```
+
+### 118\. What is the `Same-Origin Policy` and why is it important?
+
+The **Same-Origin Policy (SOP)** is a critical security mechanism in web browsers. It restricts how a document or script loaded from one "origin" can interact with a resource from another "origin". An origin is defined by the combination of protocol, hostname, and port.
+
+The SOP prevents a malicious script on one page from obtaining sensitive data from another web page through DOM manipulation or by reading responses to network requests. **CORS** (Cross-Origin Resource Sharing) is the mechanism that allows servers to relax this policy in a controlled way.
+
+### 119\. What is a "memory heap" and "call stack" in the context of the V8 JavaScript engine?
+
+  * **Memory Heap**: This is an unstructured region of memory where objects are allocated. When you create objects, arrays, or functions in your code, they are stored in the heap. V8's garbage collector is responsible for cleaning up unused memory in the heap.
+  * **Call Stack**: This is a data structure that keeps track of function calls in the program. When a function is called, a "frame" is pushed onto the stack. When the function returns, its frame is popped off. The call stack has a fixed size, and if you exceed it (e.g., with unterminated recursion), you get a "stack overflow" error.
+
+### 120\. Can you explain the BFC (Block Formatting Context)?
+
+A **Block Formatting Context (BFC)** is a part of a visual CSS rendering of a web page in which block-level elements are laid out. It's an isolated layout environment. Creating a new BFC can solve certain layout problems. For example:
+
+  * It contains floating elements, preventing floats from "leaking" outside their container.
+  * It prevents margins from collapsing between adjacent elements.
+
+You can create a new BFC by setting properties like `overflow: hidden`, `display: flow-root`, or `position: absolute`.
+
+-----
+
+## 3\. Debounce, Throttle, and More (Continued)
+
+### 121\. Implement a generic `memoize` higher-order function.
+
+**Memoization** is an optimization technique where you cache the results of expensive function calls and return the cached result when the same inputs occur again.
+
+```javascript
+function memoize(fn) {
+  const cache = new Map();
+
+  return function(...args) {
+    // Create a key based on the arguments. JSON.stringify is a simple way.
+    const key = JSON.stringify(args);
+
+    if (cache.has(key)) {
+      console.log('Returning from cache');
+      return cache.get(key);
+    }
+
+    console.log('Computing new result');
+    const result = fn.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+// Example
+const fibonacci = (n) => {
+  if (n < 2) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+};
+
+// Without memoization, fibonacci(40) is incredibly slow.
+const memoizedFib = memoize((n) => {
+  if (n < 2) return n;
+  return memoizedFib(n - 1) + memoizedFib(n - 2); // Note the recursive call
+});
+
+// With memoization, it's nearly instant.
+console.log(memoizedFib(40));
+```
+
+### 122\. How would you design a React hook `useDebounce` that returns a value?
+
+Instead of returning a debounced function, this hook takes a value and returns a new version of that value only after a specified delay. This is very useful for triggering effects based on user input.
+
+```javascript
+import { useState, useEffect } from 'react';
+
+function useDebounce(value, delay) {
+  // State to store the debounced value
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    // Set up a timer to update the debounced value after the delay
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    // Clean up the timer if the value changes before the delay has passed
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]); // Re-run effect only if value or delay changes
+
+  return debouncedValue;
+}
+
+// Usage in a component
+const SearchComponent = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  // This will only update 500ms after the user stops typing
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  useEffect(() => {
+    // This effect will run only with the debounced value
+    if (debouncedSearchTerm) {
+      // makeAPICall(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm]);
+
+  return <input onChange={e => setSearchTerm(e.target.value)} />;
+};
+```
+
+### 123\. What are the memory implications of using memoize, debounce, or throttle?
+
+These utilities rely on closures to store state (`cache`, `timeoutId`, etc.). If you create a memoized or debounced function with a very large closure (i.e., it captures large variables from its parent scope) or a memoize cache that grows indefinitely, it can lead to high memory consumption or memory leaks if not managed properly. For memoization, it's sometimes necessary to use a cache with a limited size (like an LRU cache) to prevent it from growing forever.
+
+### 124\. How is `throttle` different from using `requestAnimationFrame` for scroll events?
+
+  * **`throttle(fn, 100)`**: Guarantees that the function runs at most once every 100ms. This provides a consistent, predictable rate. It is time-based.
+  * **`requestAnimationFrame(fn)`**: The browser executes the function just before the next repaint. The rate depends on the screen's refresh rate (typically \~60fps, or every \~16.7ms). This is ideal for visual updates because it perfectly syncs your work with the browser's rendering cycle, preventing visual "jank".
+
+**Choose `requestAnimationFrame` for visual updates (like animations). Choose `throttle` for rate-limiting other tasks (like API calls).**
+
+### 125\. What is the "trailing" option in a throttle implementation?
+
+  * **Leading (default)**: The function is executed on the first call within a time window.
+  * **Trailing**: The function is executed on the last call that occurred during the time window, after the delay has passed.
+
+A robust `throttle` implementation often includes options for both. Enabling the trailing edge ensures that the very last event is always processed, which can be important.
+
+```javascript
+function throttle(func, delay, { leading = true, trailing = true } = {}) {
+    // ... more complex implementation
+}
+```
+
+### 126\. Can you debounce a promise-returning function?
+
+Yes, but you need to handle the promise resolution carefully. A standard debounce implementation would just debounce the *creation* of the promise, not wait for its result. A more advanced version could manage the pending promise.
+
+```javascript
+function debouncePromise(fn, delay) {
+  let timeoutId;
+  let latestResolve;
+  let latestReject;
+
+  return function(...args) {
+    return new Promise((resolve, reject) => {
+      clearTimeout(timeoutId);
+      latestResolve = resolve;
+      latestReject = reject;
+
+      timeoutId = setTimeout(() => {
+        fn.apply(this, args).then(latestResolve, latestReject);
+      }, delay);
+    });
+  };
+}
+```
+
+### 127\. Why should you avoid using `Date.now()` inside a throttled function for animations?
+
+Relying on `Date.now()` can lead to animations that are not perfectly smooth. The time between calls to a throttled function can vary slightly. `requestAnimationFrame`, on the other hand, provides a high-resolution timestamp as an argument to its callback. This timestamp is synchronized with the browser's rendering engine, allowing you to calculate the exact progress of an animation frame by frame, resulting in much smoother visuals.
+
+### 128\. Implement a function that batches calls.
+
+Instead of debouncing or throttling, sometimes you want to collect all calls that happen in a short period and process them together in a single batch.
+
+```javascript
+function createBatcher(processor, delay) {
+  let batch = [];
+  let timeoutId = null;
+
+  return function(item) {
+    batch.push(item);
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    timeoutId = setTimeout(() => {
+      console.log(`Processing batch of ${batch.length} items.`);
+      processor(batch);
+      batch = []; // Reset the batch
+      timeoutId = null;
+    }, delay);
+  };
+}
+
+// Example: Log multiple events in one go
+const logBatch = createBatcher((events) => {
+  // sendToAnalytics(events);
+  console.log(events);
+}, 500);
+
+logBatch({ event: 'click', id: 1 });
+logBatch({ event: 'hover', id: 2 });
+logBatch({ event: 'scroll', id: 3 });
+// After 500ms, it will log:
+// "Processing batch of 3 items."
+// [{ event: 'click', id: 1 }, { event: 'hover', id: 2 }, { event: 'scroll', id: 3 }]
+```
+
+### 129\. What is the difference between "debouncing" and "throttling" an API call?
+
+  * **Debounce**: When a user is typing in a search bar, you would **debounce** the API call. You only want to make the call once the user has *stopped* typing for a moment. This saves a lot of unnecessary requests.
+  * **Throttle**: If a user is dragging an element on a map to get updated data for the new viewport, you would **throttle** the API call. You want to provide live updates as they drag, but not overwhelm your server with hundreds of requests per second. Throttling to once every 200ms would be a good balance.
+
+### 130\. How would you test a `throttle` function using fake timers?
+
+Similar to testing debounce, you use fake timers to control time. You'll want to check that the function is called immediately (if leading is true) and that subsequent calls within the time limit are ignored.
+
+```javascript
+// Using Jest's fake timers
+describe('throttle', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  test('should call the function immediately but only once per time limit', () => {
+    const mockFn = jest.fn();
+    const throttledFn = throttle(mockFn, 1000);
+
+    throttledFn(); // Should be called immediately
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    throttledFn(); // Should be ignored
+    throttledFn(); // Should be ignored
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    // Fast-forward time
+    jest.advanceTimersByTime(1000);
+
+    throttledFn(); // Should be called again now
+    expect(mockFn).toHaveBeenCalledTimes(2);
+  });
+});
+```
