@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { 
-  createDataContext, 
-  createReducerContext, 
-  createStateContext 
+import {
+  ProviderComposer,
+  createDataContext,
+  createReducerContext,
+  createStateContext,
 } from "@/utils/context";
 
 // --- 1. Define Types ---
@@ -23,29 +24,31 @@ interface TriggerFormState {
   isActive: boolean;
 }
 
-// Reducer Types
 interface ActivityItem {
   id: string;
   message: string;
   timestamp: string;
 }
 
-type ActivityAction = 
+type ActivityAction =
   | { type: "LOG_EVENT"; message: string }
   | { type: "CLEAR_LOGS" };
 
 // --- 2. Reducer Function ---
-const activityReducer = (state: ActivityItem[], action: ActivityAction): ActivityItem[] => {
+const activityReducer = (
+  state: ActivityItem[],
+  action: ActivityAction,
+): ActivityItem[] => {
   switch (action.type) {
     case "LOG_EVENT":
       return [
-        { 
-          id: Math.random().toString(36).slice(2, 9), 
-          message: action.message, 
-          timestamp: new Date().toLocaleTimeString() 
+        {
+          id: Math.random().toString(36).slice(2, 9),
+          message: action.message,
+          timestamp: new Date().toLocaleTimeString(),
         },
-        ...state
-      ].slice(0, 50); // Keep last 50 logs
+        ...state,
+      ].slice(0, 50);
     case "CLEAR_LOGS":
       return [];
     default:
@@ -55,27 +58,44 @@ const activityReducer = (state: ActivityItem[], action: ActivityAction): Activit
 
 // --- 3. Create Contexts ---
 
-// Data Context (Static)
-const [TriggerConfigProvider, useTriggerConfig] = createDataContext<TriggerConfig>({
-  name: "TriggerConfig",
-});
+const [TriggerConfigProvider, useTriggerConfig] =
+  createDataContext<TriggerConfig>({
+    name: "TriggerConfig",
+  });
 
-// State Context (Primitive)
 const [TriggerCounterProvider, useTriggerCounter] = createStateContext<number>({
   name: "TriggerCounter",
 });
 
-// State Context (Object)
-const [TriggerFormProvider, useTriggerForm] = createStateContext<TriggerFormState>({
-  name: "TriggerForm",
-});
+const [TriggerFormProvider, useTriggerForm] =
+  createStateContext<TriggerFormState>({
+    name: "TriggerForm",
+  });
 
-// Reducer Context (Complex Logic)
 const [ActivityProvider, useActivity] = createReducerContext(activityReducer, {
   name: "Activity",
 });
 
-// --- 4. Nested Components ---
+// --- 4. Static Configuration & Providers ---
+
+const TRIGGER_CONFIG: TriggerConfig = {
+  mode: "sandbox",
+  region: "ap-southeast-1",
+};
+
+const PROVIDERS = [
+  { provider: TriggerConfigProvider, props: { value: TRIGGER_CONFIG } },
+  { provider: TriggerCounterProvider, props: { value: 0 } },
+  {
+    provider: TriggerFormProvider,
+    props: {
+      value: { name: "New Trigger", description: "", isActive: true },
+    },
+  },
+  { provider: ActivityProvider, props: { value: [] } },
+];
+
+// --- 5. Nested Components ---
 
 function TriggerStatus() {
   const config = useTriggerConfig();
@@ -95,7 +115,7 @@ function TriggerStatus() {
           <span className="font-mono">{config.mode}</span>
         </div>
       </div>
-      
+
       <Separator />
 
       <div>
@@ -123,18 +143,21 @@ function TriggerFormFields() {
   const [form, setForm] = useTriggerForm();
   const [, dispatchActivity] = useActivity();
 
-  const updateField = (field: keyof TriggerFormState, value: string | boolean) => {
+  const updateField = (
+    field: keyof TriggerFormState,
+    value: string | boolean,
+  ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    dispatchActivity({ 
-      type: "LOG_EVENT", 
-      message: `Updated ${field} to "${value}"` 
+    dispatchActivity({
+      type: "LOG_EVENT",
+      message: `Updated ${field} to "${value}"`,
     });
   };
 
   return (
     <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm space-y-4">
       <h3 className="font-semibold">Interactive Controls</h3>
-      
+
       <div className="space-y-2">
         <Label htmlFor="name">Trigger Name</Label>
         <Input
@@ -156,7 +179,7 @@ function TriggerFormFields() {
       </div>
 
       <div className="flex items-center gap-4 pt-2">
-        <Button 
+        <Button
           variant={form.isActive ? "default" : "outline"}
           onClick={() => updateField("isActive", !form.isActive)}
           className="w-full"
@@ -166,7 +189,7 @@ function TriggerFormFields() {
       </div>
 
       <Separator />
-      
+
       <TriggerCounterIncrement />
     </div>
   );
@@ -178,7 +201,10 @@ function TriggerCounterIncrement() {
 
   const handleClick = () => {
     setCount((c) => c + 1);
-    dispatchActivity({ type: "LOG_EVENT", message: "Incremented Global Counter" });
+    dispatchActivity({
+      type: "LOG_EVENT",
+      message: "Incremented Global Counter",
+    });
   };
 
   return (
@@ -197,25 +223,32 @@ function ActivityFeed() {
         <h3 className="font-semibold text-sm text-muted-foreground uppercase">
           3. Reducer Context (Logs)
         </h3>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => dispatch({ type: "CLEAR_LOGS" })}
           disabled={logs.length === 0}
         >
           Clear
         </Button>
       </div>
-      
+
       <ScrollArea className="flex-1 -mx-4 px-4">
         <div className="space-y-3">
           {logs.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No activity yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No activity yet
+            </p>
           )}
           {logs.map((log) => (
-            <div key={log.id} className="text-sm flex flex-col gap-1 pb-3 border-b last:border-0">
+            <div
+              key={log.id}
+              className="text-sm flex flex-col gap-1 pb-3 border-b last:border-0"
+            >
               <span className="font-medium">{log.message}</span>
-              <span className="text-xs text-muted-foreground">{log.timestamp}</span>
+              <span className="text-xs text-muted-foreground">
+                {log.timestamp}
+              </span>
             </div>
           ))}
         </div>
@@ -224,45 +257,25 @@ function ActivityFeed() {
   );
 }
 
-// --- 5. Parent Component ---
+// --- 6. Page Component ---
 
 export default function Page() {
-  const config: TriggerConfig = {
-    mode: "sandbox",
-    region: "ap-southeast-1",
-  };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-full space-y-8 p-8">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold">Context Utility Demo</h1>
         <p className="text-muted-foreground">
-          Demonstrating <code>Data</code>, <code>State</code>, and <code>Reducer</code> contexts working together.
+          Demonstrating <code>ProviderComposer</code> with a flattened configuration array.
         </p>
       </div>
 
-      <TriggerConfigProvider value={config}>
-        <TriggerCounterProvider value={0}>
-          <TriggerFormProvider 
-            value={{ name: "New Trigger", description: "", isActive: true }}
-          >
-            <ActivityProvider value={[]}>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-7xl items-start">
-                {/* Column 1: Controls */}
-                <TriggerFormFields />
-                
-                {/* Column 2: State Visualization */}
-                <TriggerStatus />
-
-                {/* Column 3: Event Log (Reducer) */}
-                <ActivityFeed />
-              </div>
-
-            </ActivityProvider>
-          </TriggerFormProvider>
-        </TriggerCounterProvider>
-      </TriggerConfigProvider>
+      <ProviderComposer providers={PROVIDERS}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-7xl items-start">
+          <TriggerFormFields />
+          <TriggerStatus />
+          <ActivityFeed />
+        </div>
+      </ProviderComposer>
     </div>
   );
 }
