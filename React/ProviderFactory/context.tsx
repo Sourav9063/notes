@@ -29,7 +29,7 @@ function createBaseContext<T>(name: string, errorMessage: string) {
   return { Context, useCtx };
 }
 
-// --- 1. Data Context (Static / External State) ---
+/** 1. Data Context: For sharing static data or values managed by a parent. */
 export function createDataContext<T>(options: CreateContextOptions = {}) {
   const {
     name = "DataContext",
@@ -44,7 +44,7 @@ export function createDataContext<T>(options: CreateContextOptions = {}) {
   return [Provider, useCtx] as const;
 }
 
-// --- 2. State Context (Simple Stateful) ---
+/** 2. State Context: Manages simple state internally via useState. */
 export function createStateContext<T>(options: CreateContextOptions = {}) {
   const {
     name = "StateContext",
@@ -68,7 +68,7 @@ export function createStateContext<T>(options: CreateContextOptions = {}) {
   return [Provider, useCtx] as const;
 }
 
-// --- 3. Reducer Context (Complex Logic) ---
+/** 3. Reducer Context: Manages complex state internally via useReducer. */
 export function createReducerContext<S, A>(
   reducer: Reducer<S, A>,
   options: CreateContextOptions = {},
@@ -96,3 +96,25 @@ export function createReducerContext<S, A>(
 
   return [Provider, useCtx] as const;
 }
+
+// --- Provider Composer ---
+interface ProviderPair {
+  provider: React.JSXElementConstructor<any>;
+  props: Record<string, any>;
+}
+
+export const ProviderComposer = ({
+  providers,
+  children,
+}: {
+  providers: ProviderPair[];
+  children: ReactNode;
+}) => {
+  return (
+    <>
+      {providers.reduceRight((acc, { provider: Provider, props }) => {
+        return <Provider {...props}>{acc}</Provider>;
+      }, children)}
+    </>
+  );
+};
