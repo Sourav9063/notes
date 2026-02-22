@@ -3,8 +3,8 @@
 const fs = require("fs");
 
 /**
- * 1. FAST I/O (Crucial Optimization)
- * Avoids String.split() which causes MLE/TLE on huge inputs.
+ * 1. FAST I/O (Crucial Optimization for Codeforces)
+ * Note: Remove this entire section for LeetCode.
  */
 const buffer = fs.readFileSync(0);
 let offset = 0;
@@ -39,14 +39,12 @@ function readBigInt() {
  */
 
 // --- O(1) Queue (Replaces std::queue) ---
-// Array.shift() is O(N). This array-based queue is amortized O(1).
 class Queue {
     constructor() { this.q = []; this.head = 0; }
     push(x) { this.q.push(x); }
     pop() {
         if (this.empty()) return null;
         const res = this.q[this.head++];
-        // Free up memory if the head moves too far forward
         if (this.head * 2 >= this.q.length) {
             this.q = this.q.slice(this.head);
             this.head = 0;
@@ -56,6 +54,27 @@ class Queue {
     front() { return this.empty() ? null : this.q[this.head]; }
     empty() { return this.head === this.q.length; }
     size() { return this.q.length - this.head; }
+}
+
+// --- Deque (Replaces std::deque) ---
+class Deque {
+    constructor() { this.frontArr = []; this.backArr = []; }
+    push_back(val) { this.backArr.push(val); }
+    push_front(val) { this.frontArr.push(val); }
+    pop_back() { 
+        if (this.backArr.length) return this.backArr.pop();
+        return this.frontArr.shift(); // O(N) fallback, rare if balanced
+    }
+    pop_front() {
+        if (this.frontArr.length) return this.frontArr.pop();
+        let val = this.backArr[0];
+        this.backArr.shift(); // O(N) fallback
+        return val;
+    }
+    front() { return this.frontArr.length ? this.frontArr[this.frontArr.length - 1] : this.backArr[0]; }
+    back() { return this.backArr.length ? this.backArr[this.backArr.length - 1] : this.frontArr[0]; }
+    empty() { return this.frontArr.length === 0 && this.backArr.length === 0; }
+    size() { return this.frontArr.length + this.backArr.length; }
 }
 
 // --- Priority Queue (Replaces std::priority_queue) ---
@@ -103,7 +122,6 @@ class PriorityQueue {
 }
 
 // --- Binary Search (Replaces std::lower_bound & std::upper_bound) ---
-// Returns the index of the first element >= target
 const lowerBound = (arr, target) => {
     let l = 0, r = arr.length;
     while (l < r) {
@@ -114,7 +132,6 @@ const lowerBound = (arr, target) => {
     return l;
 };
 
-// Returns the index of the first element > target
 const upperBound = (arr, target) => {
     let l = 0, r = arr.length;
     while (l < r) {
@@ -164,9 +181,16 @@ class BIT {
 }
 
 /**
- * 3. MATH UTILITIES
+ * 3. UTILITIES & MATH
  */
-const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+// 2D Array Initialization
+const make2D = (r, c, val = 0) => Array.from({ length: r }, () => new Array(c).fill(val));
+
+// Safe Max/Min for large arrays (Avoids Maximum Call Stack Size Exceeded)
+const arrayMax = (arr) => arr.reduce((a, b) => (a > b ? a : b));
+const arrayMin = (arr) => arr.reduce((a, b) => (a < b ? a : b));
+
+const gcd = (a, b) => b === 0n || b === 0 ? a : gcd(b, a % b);
 const lcm = (a, b) => (a / gcd(a, b)) * b;
 
 // Modular Exponentiation (base^exp % mod)
@@ -190,22 +214,17 @@ function solve() {
     
     // --- LOGIC START ---
     let t = readInt(); 
-    if (t === null) return; // Exit if file is empty
+    if (t === null) return; 
 
     while (t-- > 0) {
-        // Example reading variables:
         // const n = readInt();
-        // const m = readInt();
-        
-        // Example array building:
         // const arr = new Array(n);
         // for(let i=0; i<n; i++) arr[i] = readInt();
 
-        // Push output
         // out.push(result);
     }
 
-    // Flush output at once
+    // Flush output
     process.stdout.write(out.join("\n") + "\n");
 }
 
