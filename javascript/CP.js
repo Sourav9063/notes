@@ -209,23 +209,42 @@ const power = (base, exp, mod) => {
 /**
  * 4. MAIN LOGIC
  */
-function solve() {
+
+// Solve function strictly handles the logic for a single test case
+function solve(n, arr) {
+    // Example logic: sum the array
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+        sum += arr[i];
+    }
+    
+    // Return the result to be printed
+    return sum;
+}
+
+// Main function handles I/O and test case looping
+function main() {
     const out = [];
     
-    // --- LOGIC START ---
     let t = readInt(); 
-    if (t === null) return; 
+    if (t === null) return; // Exit if file is empty
 
     while (t-- > 0) {
-        // const n = readInt();
-        // const arr = new Array(n);
-        // for(let i=0; i<n; i++) arr[i] = readInt();
+        // 1. Read testcase inputs
+        const n = readInt();
+        
+        const arr = new Array(n);
+        for(let i = 0; i < n; i++) {
+            arr[i] = readInt();
+        }
 
-        // out.push(result);
+        // 2. Call solve and store the result
+        const result = solve(n, arr);
+        out.push(result);
     }
 
-    // Flush output
+    // 3. Flush output at once
     process.stdout.write(out.join("\n") + "\n");
 }
 
-solve();
+main();
