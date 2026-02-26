@@ -56,7 +56,7 @@ export function createStateContext<T>(options: CreateContextOptions = {}) {
   >(name, errorMessage);
 
   const Provider = ({ children, value }: { children: ReactNode; value: T }) => {
-    const [state, setState] = useState(value);
+    const [state, setState] = useState(() => value);
     const memoizedValue = useMemo(
       () => [state, setState] as [T, Dispatch<SetStateAction<T>>],
       [state],
@@ -84,7 +84,7 @@ export function createReducerContext<S, A>(
   );
 
   const Provider = ({ children, value }: { children: ReactNode; value: S }) => {
-    const [state, dispatch] = useReducer(reducer, value);
+    const [state, dispatch] = useReducer(reducer, value, (arg) => arg);
     const memoizedValue = useMemo(
       () => [state, dispatch] as [S, Dispatch<A>],
       [state],
@@ -100,8 +100,10 @@ export function createReducerContext<S, A>(
 
 // --- Provider Composer ---
 interface ProviderPair {
-  provider: JSXElementConstructor<{ children: ReactNode }>;
-  props: Record<string, unknown>;
+  // biome-ignore lint/suspicious/noExplicitAny: necessary for flexible provider composition
+  provider: JSXElementConstructor<any>;
+  // biome-ignore lint/suspicious/noExplicitAny: necessary for flexible provider composition
+  props: Record<string, any>;
   key?: string | number;
 }
 
