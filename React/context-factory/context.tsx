@@ -1,5 +1,6 @@
 import {
   type Dispatch,
+  type JSXElementConstructor,
   type ReactNode,
   type Reducer,
   createContext as reactCreateContext,
@@ -99,8 +100,9 @@ export function createReducerContext<S, A>(
 
 // --- Provider Composer ---
 interface ProviderPair {
-  provider: React.JSXElementConstructor<any>;
-  props: Record<string, any>;
+  provider: JSXElementConstructor<{ children: ReactNode }>;
+  props: Record<string, unknown>;
+  key?: string | number;
 }
 
 export const ProviderComposer = ({
@@ -112,9 +114,16 @@ export const ProviderComposer = ({
 }) => {
   return (
     <>
-      {providers.reduceRight((acc, { provider: Provider, props }) => {
-        return <Provider {...props}>{acc}</Provider>;
-      }, children)}
+      {providers.reduceRight(
+        (acc, { provider: Provider, props, key }, index) => {
+          return (
+            <Provider key={key ?? index} {...props}>
+              {acc}
+            </Provider>
+          );
+        },
+        children,
+      )}
     </>
   );
 };
