@@ -1300,7 +1300,338 @@ REVOKE DELETE ON anomaly_routes FROM app_user;
 
 ---
 
-## 11. PostgreSQL Superpowers
+## 11. NULL Semantics — The Biggest Source of Silent Bugs
+
+NULL means **unknown** — not zero, not empty string, not false. This single distinction causes more subtle bugs than almost anything else in SQL.
+
+### NULL is not equal to anything — including itself
+
+```sql
+SELECT NULL = NULL;    -- NULL (not TRUE)
+SELECT NULL != NULL;   -- NULL (not FALSE)
+SELECT NULL = 'hello'; -- NULL
+
+-- The only correct way to check for NULL:
+SELECT * FROM anomaly_routes WHERE resolved_by IS NULL;
+SELECT * FROM anomaly_routes WHERE resolved_by IS NOT NULL;
+
+-- IS DISTINCT FROM: NULL-safe equality (treats NULL = NULL as TRUE)
+SELECT NULL IS DISTINCT FROM NULL;   -- FALSE  (they are not distinct)
+SELECT NULL IS DISTINCT FROM 'x';    -- TRUE
+SELECT 'x' IS DISTINCT FROM 'x';     -- FALSE
+```
+
+Use `IS DISTINCT FROM` in trigger `WHEN` clauses where either value could be NULL:
+
+```sql
+WHEN (OLD.status IS DISTINCT FROM NEW.status)  -- safe
+-- vs:
+WHEN (OLD.status != NEW.status)                -- wrong: NULL != 'REPORTED' = NULL = falsy
+```
+
+### NULL propagates through expressions
+
+Any arithmetic or string operation with NULL produces NULL:
+
+```sql
+SELECT 1 + NULL;          -- NULL
+SELECT 'hello' || NULL;   -- NULL  ← this is why CONCAT is safer than ||
+SELECT NULL > 5;          -- NULL  ← not FALSE
+```
+
+### NULL in WHERE — the trap
+
+```sql
+-- These rows are EXCLUDED even though they have a status value:
+SELECT * FROM anomaly_routes WHERE status != 'REJECTED';
+-- Rows where status IS NULL are not returned — NULL != 'REJECTED' = NULL = not true
+
+-- Fix: explicitly include NULLs if you want them:
+SELECT * FROM anomaly_routes WHERE status != 'REJECTED' OR status IS NULL;
+```
+
+### NULL in aggregates
+
+`COUNT(*)` counts all rows. `COUNT(column)` counts non-NULL values only.
+
+```sql
+SELECT
+    COUNT(*)            AS total_rows,      -- includes NULLs
+    COUNT(resolved_by)  AS resolved_count,  -- excludes NULL resolved_by
+    SUM(anomaly_rides_count)                -- NULL values are ignored
+FROM anomaly_routes;
+
+-- AVG also ignores NULLs — it's SUM/COUNT(non-null), not SUM/total_rows
+SELECT AVG(score) FROM results;
+-- If 3 of 10 rows have NULL score: AVG = SUM(7 scores) / 7, not / 10
+```
+
+### NOT IN with NULLs — the silent killer
+
+```sql
+-- This query returns NO rows if emails contains even one NULL:
+SELECT * FROM users
+WHERE email NOT IN (SELECT email FROM banned_users);
+-- If banned_users has any NULL email: NOT IN (..., NULL) = NOT (... OR NULL) = NULL = always false
+
+-- Safe alternative:
+SELECT * FROM users u
+WHERE NOT EXISTS (SELECT 1 FROM banned_users b WHERE b.email = u.email);
+-- EXISTS ignores NULLs correctly
+```
+
+### COALESCE and NULLIF
+
+```sql
+-- COALESCE: return first non-NULL value
+SELECT COALESCE(resolved_by, 'unassigned') FROM anomaly_routes;
+SELECT COALESCE(NULL, NULL, 'third', 'fourth');  -- 'third'
+
+-- Practical: safe division (avoid divide-by-zero)
+SELECT total_rides / NULLIF(total_days, 0) AS rides_per_day;
+-- NULLIF returns NULL when total_days = 0 → division returns NULL instead of error
+
+-- NULLIF: return NULL when two values are equal
+SELECT NULLIF(status, 'REPORTED');  -- returns NULL when status = 'REPORTED', else status
+```
+
+### NULL in CASE
+
+```sql
+-- CASE with no ELSE returns NULL implicitly:
+CASE WHEN status = 'APPROVED' THEN 'yes' END
+-- When status = 'REJECTED': returns NULL (no ELSE)
+
+-- Be explicit:
+CASE WHEN status = 'APPROVED' THEN 'yes' ELSE 'no' END
+```
+
+---
+
+## 12. Date & Time Functions
+
+Postgres has the richest date/time support of any SQL database. Since you use `TIMESTAMPTZ` everywhere, this section is critical.
+
+### Current Time
+
+```sql
+SELECT NOW();                  -- 2026-04-11 10:30:00+06 (transaction start time, with timezone)
+SELECT CURRENT_TIMESTAMP;      -- same as NOW()
+SELECT CURRENT_DATE;           -- 2026-04-11
+SELECT CURRENT_TIME;           -- 10:30:00+06
+SELECT clock_timestamp();      -- real wall-clock time, advances mid-transaction
+SELECT LOCALTIME;              -- current time without timezone
+SELECT LOCALTIMESTAMP;         -- current timestamp without timezone
+```
+
+### Truncating — Group by Time Period
+
+`DATE_TRUNC` is essential for time-series aggregations:
+
+```sql
+-- Truncate to the start of the containing period:
+SELECT DATE_TRUNC('hour',  '2026-04-11 10:47:32+06');  -- 2026-04-11 10:00:00+06
+SELECT DATE_TRUNC('day',   '2026-04-11 10:47:32+06');  -- 2026-04-11 00:00:00+06
+SELECT DATE_TRUNC('week',  '2026-04-11 10:47:32+06');  -- 2026-04-07 (Monday)
+SELECT DATE_TRUNC('month', '2026-04-11 10:47:32+06');  -- 2026-04-01 00:00:00+06
+SELECT DATE_TRUNC('year',  '2026-04-11 10:47:32+06');  -- 2026-01-01 00:00:00+06
+
+-- Count anomalies per day:
+SELECT DATE_TRUNC('day', created_at) AS day, COUNT(*) AS count
+FROM anomaly_routes
+GROUP BY DATE_TRUNC('day', created_at)
+ORDER BY day;
+
+-- Count per hour of day (extract the hour, group across all days):
+SELECT EXTRACT(hour FROM created_at) AS hour, COUNT(*) AS count
+FROM anomaly_routes
+GROUP BY hour
+ORDER BY hour;
+```
+
+### Extracting Parts
+
+```sql
+SELECT EXTRACT(year   FROM created_at) FROM anomaly_routes;  -- 2026
+SELECT EXTRACT(month  FROM created_at) FROM anomaly_routes;  -- 4
+SELECT EXTRACT(day    FROM created_at) FROM anomaly_routes;  -- 11
+SELECT EXTRACT(hour   FROM created_at) FROM anomaly_routes;  -- 10
+SELECT EXTRACT(dow    FROM created_at) FROM anomaly_routes;  -- 0=Sunday..6=Saturday
+SELECT EXTRACT(epoch  FROM created_at) FROM anomaly_routes;  -- Unix timestamp (seconds)
+SELECT EXTRACT(epoch  FROM NOW() - created_at)              -- age in seconds
+
+-- DATE_PART is equivalent (older syntax):
+SELECT DATE_PART('month', created_at) FROM anomaly_routes;
+```
+
+### Intervals — Arithmetic on Timestamps
+
+```sql
+-- Add/subtract intervals:
+SELECT NOW() + INTERVAL '1 day';
+SELECT NOW() - INTERVAL '3 months';
+SELECT NOW() + INTERVAL '1 year 2 months 3 days';
+SELECT NOW() - INTERVAL '90 minutes';
+SELECT created_at + INTERVAL '7 days' AS expires_at FROM sessions;
+
+-- INTERVAL from a number:
+SELECT NOW() + (5 || ' days')::INTERVAL;   -- dynamic interval from a variable
+
+-- Difference between two timestamps:
+SELECT resolved_at - created_at AS resolution_time FROM anomaly_routes;
+-- Returns an INTERVAL, e.g., '2 days 04:30:00'
+
+-- Difference in specific units:
+SELECT EXTRACT(epoch FROM (resolved_at - created_at)) / 3600 AS hours_to_resolve
+FROM anomaly_routes WHERE resolved_at IS NOT NULL;
+```
+
+### AGE — Human-readable difference
+
+```sql
+SELECT AGE(NOW(), created_at) AS age FROM anomaly_routes;
+-- '3 mons 5 days 04:30:00'
+
+SELECT AGE('2026-04-11', '2025-12-01');
+-- '4 mons 10 days'
+```
+
+### Timezone Conversion
+
+```sql
+-- Convert stored UTC to a display timezone:
+SELECT created_at AT TIME ZONE 'Asia/Dhaka' FROM anomaly_routes;
+SELECT created_at AT TIME ZONE 'Asia/Dhaka' AT TIME ZONE 'UTC' FROM anomaly_routes;
+
+-- Set session timezone (all timestamps display in this zone):
+SET timezone = 'Asia/Dhaka';
+SET timezone = 'UTC';
+
+-- List all available timezone names:
+SELECT * FROM pg_timezone_names WHERE name LIKE 'Asia/%';
+```
+
+### Common Patterns
+
+```sql
+-- Rows from the last 7 days:
+SELECT * FROM anomaly_routes WHERE created_at > NOW() - INTERVAL '7 days';
+
+-- Rows from today (in a specific timezone):
+SELECT * FROM anomaly_routes
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'Asia/Dhaka') =
+      DATE_TRUNC('day', NOW() AT TIME ZONE 'Asia/Dhaka');
+
+-- Format a timestamp as a string:
+SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS') FROM anomaly_routes;
+SELECT TO_CHAR(created_at, 'Day, DD Month YYYY') FROM anomaly_routes;
+-- 'Saturday, 11 April 2026'
+
+-- Parse a string to timestamp:
+SELECT TO_TIMESTAMP('11-04-2026 10:30', 'DD-MM-YYYY HH24:MI');
+SELECT '2026-04-11'::DATE;
+SELECT '2026-04-11 10:30:00+06'::TIMESTAMPTZ;
+
+-- First and last day of current month:
+SELECT DATE_TRUNC('month', NOW()) AS first_day;
+SELECT DATE_TRUNC('month', NOW()) + INTERVAL '1 month' - INTERVAL '1 day' AS last_day;
+```
+
+---
+
+## 13. COPY — Bulk Loading and Exporting Data
+
+For loading or exporting large amounts of data, `COPY` is 10–100x faster than `INSERT`. It bypasses the query parser and executor overhead for each row.
+
+### COPY FROM — Loading Data
+
+```sql
+-- Load from a CSV file (runs on the server, must be accessible by postgres OS user):
+COPY anomaly_routes (city_id, status, created_at)
+FROM '/var/data/anomalies.csv'
+WITH (FORMAT CSV, HEADER true, DELIMITER ',', NULL '');
+
+-- Options:
+-- FORMAT: CSV, TEXT, BINARY
+-- HEADER: skip first line
+-- DELIMITER: column separator (default tab for TEXT, comma for CSV)
+-- NULL: string that represents NULL ('', 'NULL', '\N')
+-- QUOTE: quote character for CSV (default ")
+-- ESCAPE: escape character (default same as QUOTE)
+```
+
+### \COPY — Client-side (use this in practice)
+
+`COPY` reads from the **server's** filesystem. `\COPY` (psql meta-command) reads from the **client's** filesystem — what you almost always want:
+
+```sql
+-- In psql: loads from your local machine
+\COPY anomaly_routes (city_id, status) FROM 'local_file.csv' CSV HEADER;
+
+-- Export to local file:
+\COPY (SELECT * FROM anomaly_routes WHERE status = 'PENDING_APPROVAL') TO 'export.csv' CSV HEADER;
+```
+
+### COPY TO — Exporting Data
+
+```sql
+-- Export whole table:
+COPY anomaly_routes TO '/var/data/backup.csv' WITH (FORMAT CSV, HEADER true);
+
+-- Export a query result:
+COPY (
+    SELECT ar.id, ar.status, c.name AS city
+    FROM anomaly_routes ar
+    JOIN cities c ON ar.city_id = c.id
+    WHERE ar.created_at > '2026-01-01'
+) TO '/var/data/q1_anomalies.csv' WITH (FORMAT CSV, HEADER true);
+```
+
+### COPY with STDIN/STDOUT — Piping
+
+```bash
+# Pipe data directly (useful for backups and migrations):
+psql -c "COPY anomaly_routes TO STDOUT CSV HEADER" > anomalies.csv
+
+# Load from pipe:
+cat anomalies.csv | psql -c "COPY anomaly_routes FROM STDIN CSV HEADER"
+
+# Cross-database transfer without a temp file:
+psql source_db -c "COPY anomaly_routes TO STDOUT" | psql target_db -c "COPY anomaly_routes FROM STDIN"
+```
+
+### Performance Tips for Bulk Load
+
+```sql
+-- Fastest bulk load pattern:
+BEGIN;
+
+-- 1. Disable triggers temporarily (if you know data is clean)
+ALTER TABLE anomaly_routes DISABLE TRIGGER ALL;
+
+-- 2. Drop indexes before load, rebuild after (faster than maintaining them during load)
+DROP INDEX idx_status;
+COPY anomaly_routes FROM '/data/large_file.csv' CSV HEADER;
+CREATE INDEX idx_status ON anomaly_routes(status);
+
+-- 3. Re-enable triggers
+ALTER TABLE anomaly_routes ENABLE TRIGGER ALL;
+
+COMMIT;
+
+-- 4. Update statistics after large load:
+ANALYZE anomaly_routes;
+```
+
+For truly massive loads (tens of millions of rows), also set:
+```sql
+SET synchronous_commit = off;  -- don't fsync WAL per transaction (risky but fast)
+SET maintenance_work_mem = '2GB';  -- more memory for index builds
+```
+
+---
+
+## 14. PostgreSQL Superpowers
 
 ### Full-Text Search
 
