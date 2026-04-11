@@ -1631,7 +1631,411 @@ SET maintenance_work_mem = '2GB';  -- more memory for index builds
 
 ---
 
-## 14. PostgreSQL Superpowers
+## 14. Pattern Matching & Regex
+
+Postgres has three levels of pattern matching, from simple to powerful.
+
+### `LIKE` / `ILIKE`
+
+The simplest form. Two wildcards: `%` (any sequence) and `_` (single character). `ILIKE` is the case-insensitive version.
+
+```sql
+SELECT * FROM cities WHERE name LIKE 'Dh%';        -- starts with 'Dh'
+SELECT * FROM cities WHERE name LIKE '%aka';        -- ends with 'aka'
+SELECT * FROM cities WHERE name LIKE '%hak%';       -- contains 'hak'
+SELECT * FROM cities WHERE name LIKE 'Dh_ka';       -- 'Dhaka', 'Dhoka', etc.
+
+SELECT * FROM cities WHERE name ILIKE '%dhaka%';    -- case-insensitive
+
+-- Negation:
+SELECT * FROM cities WHERE name NOT LIKE 'Dh%';
+
+-- Escape literal % or _:
+SELECT * FROM logs WHERE message LIKE '100\%';      -- literal '100%'
+SELECT * FROM logs WHERE message LIKE '100|%' ESCAPE '|';  -- custom escape char
+```
+
+**Index usage:** `LIKE 'prefix%'` (anchored left) can use a standard B-tree index if the column uses `text_pattern_ops`. `LIKE '%middle%'` cannot use a B-tree — you need a `pg_trgm` GIN index.
+
+```sql
+-- For LIKE 'prefix%' queries to use an index:
+CREATE INDEX idx_name_pattern ON cities(name text_pattern_ops);
+
+-- For LIKE '%anywhere%' queries:
+CREATE EXTENSION pg_trgm;
+CREATE INDEX idx_name_trgm ON cities USING GIN (name gin_trgm_ops);
+```
+
+### `SIMILAR TO` — SQL Standard Regex
+
+A middle ground between `LIKE` and POSIX regex. Uses `|` for alternation, `*` and `+` for repetition, `()` for grouping. Rarely worth using — POSIX regex is more powerful and more portable.
+
+```sql
+SELECT 'abc' SIMILAR TO '(b|c)%';    -- FALSE
+SELECT 'abc' SIMILAR TO '%(b|d)%';   -- TRUE
+```
+
+### POSIX Regular Expressions — The Powerful One
+
+Postgres has full POSIX regex support via four operators:
+
+| Operator | Meaning                          |
+| -------- | -------------------------------- |
+| `~`      | Matches regex (case sensitive)   |
+| `~*`     | Matches regex (case insensitive) |
+| `!~`     | Does NOT match (case sensitive)  |
+| `!~*`    | Does NOT match (case insensitive)|
+
+```sql
+-- Find emails with a specific pattern:
+SELECT * FROM users WHERE email ~ '^[a-z]+@pathao\.com$';
+
+-- Case-insensitive match:
+SELECT * FROM users WHERE name ~* '^sourav';
+
+-- Find rows where a field is a valid integer:
+SELECT * FROM imports WHERE raw_value ~ '^-?[0-9]+$';
+
+-- Negation — non-matching:
+SELECT * FROM users WHERE email !~ '@';   -- emails without @
+```
+
+### Regex Functions
+
+```sql
+-- REGEXP_MATCHES: return captured groups
+SELECT REGEXP_MATCHES('user@pathao.com', '^(.+)@(.+)$');
+-- {user,pathao.com}   ← returns an array of captured groups
+
+-- With 'g' flag: return all matches as multiple rows
+SELECT REGEXP_MATCHES('abc 123 def 456', '[0-9]+', 'g');
+-- {123}
+-- {456}
+
+-- REGEXP_REPLACE: regex-based replacement
+SELECT REGEXP_REPLACE('user@pathao.com', '@.+$', '@company.com');
+-- 'user@company.com'
+
+-- Replace all occurrences (g flag):
+SELECT REGEXP_REPLACE('hello world hello', 'hello', 'hi', 'g');
+-- 'hi world hi'
+
+-- REGEXP_SPLIT_TO_TABLE: split a string into rows
+SELECT REGEXP_SPLIT_TO_TABLE('one,two,three', ',');
+-- one
+-- two
+-- three
+
+-- REGEXP_SPLIT_TO_ARRAY: split into an array
+SELECT REGEXP_SPLIT_TO_ARRAY('one,two,three', ',');
+-- {one,two,three}
+
+-- SUBSTRING with regex capture:
+SELECT SUBSTRING('user@pathao.com' FROM '^(.+)@');
+-- 'user'
+```
+
+### Practical Example — Extracting Data
+
+```sql
+-- Parse URLs out of log lines:
+SELECT log_id,
+       (REGEXP_MATCHES(message, 'https?://[^\s]+'))[1] AS url
+FROM logs
+WHERE message ~ 'https?://';
+
+-- Validate phone numbers (Bangladesh format):
+SELECT * FROM users WHERE phone ~ '^\+88017[0-9]{8}$';
+
+-- Extract the domain from every email:
+SELECT email, REGEXP_REPLACE(email, '^.+@', '') AS domain FROM users;
+```
+
+---
+
+## 15. Set Operations — `UNION`, `INTERSECT`, `EXCEPT`
+
+Set operations combine the results of two or more queries. Each query must return the same number of columns with compatible types.
+
+### `UNION` vs `UNION ALL`
+
+```sql
+-- UNION: combines results and removes duplicates (expensive — requires a sort)
+SELECT email FROM users
+UNION
+SELECT email FROM contributors;
+
+-- UNION ALL: combines results WITHOUT removing duplicates (much faster)
+SELECT email FROM users
+UNION ALL
+SELECT email FROM contributors;
+```
+
+**Use `UNION ALL` by default.** Only use `UNION` (without `ALL`) when you specifically need deduplication. On large result sets, the difference is dramatic — `UNION` must build a hash or sort to find duplicates.
+
+### `INTERSECT` — Rows in Both
+
+```sql
+-- Emails present in BOTH tables:
+SELECT email FROM users
+INTERSECT
+SELECT email FROM banned_users;
+
+-- ALL variant preserves duplicates:
+SELECT email FROM users
+INTERSECT ALL
+SELECT email FROM banned_users;
+```
+
+### `EXCEPT` — Rows in First But Not Second
+
+```sql
+-- Users who are NOT banned:
+SELECT email FROM users
+EXCEPT
+SELECT email FROM banned_users;
+
+-- ALL variant:
+SELECT email FROM users
+EXCEPT ALL
+SELECT email FROM banned_users;
+```
+
+### Combining — Order of Operations
+
+You can chain set operations. They're evaluated left to right, but `INTERSECT` has higher precedence than `UNION` and `EXCEPT`. Use parentheses to be explicit.
+
+```sql
+-- Parentheses make intent clear:
+(SELECT email FROM users UNION SELECT email FROM guests)
+EXCEPT
+SELECT email FROM banned_users;
+```
+
+### `ORDER BY` and `LIMIT` Apply to the Final Result
+
+```sql
+SELECT name, 'user' AS source FROM users
+UNION ALL
+SELECT name, 'contributor' AS source FROM contributors
+ORDER BY name    -- applies to the combined result
+LIMIT 10;
+```
+
+---
+
+## 16. Advanced GROUP BY — `GROUPING SETS`, `ROLLUP`, `CUBE`
+
+Standard `GROUP BY` produces one grouping. These extensions let you compute multiple groupings in a single query — essential for reporting and dashboards.
+
+### `GROUPING SETS` — Multiple Groupings in One Pass
+
+Instead of running N queries and `UNION`ing them, compute all groupings at once:
+
+```sql
+-- Count anomalies by city AND by status AND overall — in one query
+SELECT city_id, status, COUNT(*) AS total
+FROM anomaly_routes
+GROUP BY GROUPING SETS (
+    (city_id, status),   -- by both
+    (city_id),           -- by city only
+    (status),            -- by status only
+    ()                    -- grand total
+);
+```
+
+Rows with NULL in the grouped column are "subtotal" rows — they aggregate across that dimension.
+
+```
+ city_id | status              | total
+---------+---------------------+-------
+       1 | PENDING_APPROVAL    |  250
+       1 | REJECTED            |   30
+       1 | NULL                |  280    ← subtotal for city 1 (all statuses)
+       2 | PENDING_APPROVAL    |  140
+       2 | NULL                |  140
+    NULL | PENDING_APPROVAL    |  390    ← subtotal for PENDING_APPROVAL (all cities)
+    NULL | REJECTED            |   30
+    NULL | NULL                |  420    ← grand total
+```
+
+### `ROLLUP` — Hierarchical Subtotals
+
+`ROLLUP(a, b, c)` is shorthand for `GROUPING SETS ((a,b,c), (a,b), (a), ())`. Useful when dimensions have a natural hierarchy (year → month → day, or country → city → district).
+
+```sql
+-- Sales report with subtotals at each level:
+SELECT year, month, day, SUM(amount) AS total
+FROM sales
+GROUP BY ROLLUP (year, month, day);
+
+-- Produces:
+-- Each day
+-- Each month (subtotal across days)
+-- Each year (subtotal across months)
+-- Grand total (across all years)
+```
+
+### `CUBE` — All Possible Combinations
+
+`CUBE(a, b, c)` is shorthand for every possible subset: `(a,b,c), (a,b), (a,c), (b,c), (a), (b), (c), ()`. Useful for OLAP-style reports where you want aggregation along every dimension.
+
+```sql
+-- Aggregates along every combination of dimensions:
+SELECT region, product, channel, SUM(revenue)
+FROM sales
+GROUP BY CUBE (region, product, channel);
+```
+
+### `GROUPING()` — Identifying Subtotal Rows
+
+The NULL values in subtotal rows look the same as actual NULL data. Use `GROUPING()` to distinguish:
+
+```sql
+SELECT
+    city_id,
+    status,
+    COUNT(*) AS total,
+    GROUPING(city_id) AS is_city_subtotal,    -- 1 if this row aggregates across cities
+    GROUPING(status)  AS is_status_subtotal
+FROM anomaly_routes
+GROUP BY ROLLUP (city_id, status);
+
+-- GROUPING returns 1 for "this column was rolled up for this row", 0 otherwise
+-- Use it to label rows: CASE WHEN GROUPING(city_id) = 1 THEN 'All cities' ELSE city_id::text END
+```
+
+---
+
+## 17. Type Casting
+
+Postgres is strict about types — stricter than most databases. You'll cast values constantly.
+
+### Cast Syntax
+
+Two equivalent forms:
+
+```sql
+-- PostgreSQL shorthand (most common):
+SELECT '42'::INTEGER;
+SELECT '2026-04-11'::DATE;
+SELECT '{"a":1}'::JSONB;
+
+-- SQL standard form:
+SELECT CAST('42' AS INTEGER);
+SELECT CAST('2026-04-11' AS DATE);
+```
+
+Both are functionally identical. Pick one and be consistent — the `::` form is more common in the Postgres world.
+
+### Implicit vs Explicit Casts
+
+Postgres will convert types automatically when it's unambiguous — but fails when it isn't. This trips up developers coming from MySQL (which is much looser).
+
+```sql
+-- Implicit — works:
+SELECT 1 + 2.5;           -- INTEGER + NUMERIC → NUMERIC
+SELECT 'abc' || 123;      -- TEXT || INTEGER → TEXT (integer cast to text)
+
+-- Implicit — FAILS (too ambiguous):
+SELECT '1' + 1;
+-- ERROR: operator does not exist: unknown + integer
+
+-- Fix with explicit cast:
+SELECT '1'::INTEGER + 1;    -- 2
+SELECT 1 + '1'::INTEGER;    -- 2
+```
+
+### Common Casts You'll Use Daily
+
+```sql
+-- Text to number:
+SELECT '42'::INTEGER;
+SELECT '3.14'::NUMERIC;
+SELECT '3.14'::FLOAT;
+
+-- Number to text:
+SELECT 42::TEXT;
+SELECT (3.14)::TEXT;
+
+-- Text to timestamp:
+SELECT '2026-04-11'::DATE;
+SELECT '2026-04-11 10:30:00'::TIMESTAMP;
+SELECT '2026-04-11 10:30:00+06'::TIMESTAMPTZ;
+
+-- Timestamp to date:
+SELECT NOW()::DATE;
+SELECT created_at::DATE FROM anomaly_routes;  -- strip time component
+
+-- Text to JSON:
+SELECT '{"key":"value"}'::JSONB;
+
+-- Array conversion:
+SELECT '{1,2,3}'::INTEGER[];
+SELECT ARRAY[1,2,3]::TEXT[];
+
+-- UUID:
+SELECT '550e8400-e29b-41d4-a716-446655440000'::UUID;
+
+-- Boolean:
+SELECT 't'::BOOLEAN;   -- TRUE
+SELECT 'yes'::BOOLEAN; -- TRUE
+SELECT '0'::BOOLEAN;   -- FALSE
+```
+
+### Casting in WHERE Clauses — Index Gotcha
+
+A cast on an indexed column prevents the index from being used. The cast converts the column value for every row — Postgres can't use the B-tree.
+
+```sql
+-- If email is indexed as TEXT but you cast to VARCHAR:
+SELECT * FROM users WHERE email::VARCHAR = 'x@y.com';  -- NO INDEX USE
+
+-- Fix: cast the constant, not the column:
+SELECT * FROM users WHERE email = 'x@y.com'::TEXT;     -- INDEX USED
+
+-- Or create an expression index on the cast expression:
+CREATE INDEX idx_email_varchar ON users((email::VARCHAR));
+```
+
+### `::REGCLASS` and `::REGTYPE` — Metadata Casts
+
+Postgres has special cast targets for looking up objects by name:
+
+```sql
+-- Get a table's OID from its name:
+SELECT 'anomaly_routes'::REGCLASS;       -- anomaly_routes
+SELECT 'anomaly_routes'::REGCLASS::OID;  -- 16394 (the internal OID)
+
+-- Use in metadata queries:
+SELECT * FROM pg_constraint WHERE conrelid = 'anomaly_routes'::REGCLASS;
+
+-- Get a type's OID from its name:
+SELECT 'integer'::REGTYPE;   -- integer
+SELECT 'integer'::REGTYPE::OID;  -- 23
+```
+
+Without these, you'd have to join against `pg_class` or `pg_type` manually. `REGCLASS` is a shortcut for metadata queries.
+
+### Safe Casting — Avoiding Errors
+
+A failed cast raises an error and aborts the transaction. For unreliable input (user data, imports), you need safer patterns.
+
+```sql
+-- Pre-check with regex before casting:
+SELECT CASE
+    WHEN raw_value ~ '^-?[0-9]+$' THEN raw_value::INTEGER
+    ELSE NULL
+END
+FROM imports;
+
+-- In Postgres 16+: TRY_CAST via the new safe variant
+-- (before Postgres 16, you had to write PL/pgSQL exception blocks)
+```
+
+---
+
+## 18. PostgreSQL Superpowers
 
 ### Full-Text Search
 
