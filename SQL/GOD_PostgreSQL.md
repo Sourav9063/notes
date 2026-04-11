@@ -1,4 +1,4 @@
-# Internal_PostgreSQL.md
+# GOD_PostgreSQL.md
 
 > This is not a syntax guide. This is how Postgres actually works — the internals, the failure modes, the production decisions, and the things nobody tells you until your database is on fire at 2am.
 
@@ -1243,6 +1243,494 @@ LEFT JOIN pg_constraint pk ON pk.conrelid = c.oid AND pk.contype = 'p'
 WHERE c.relkind = 'r'
 AND c.relnamespace = 'public'::regnamespace
 AND pk.conname IS NULL;
+```
+
+---
+
+## 15. Backup & Point-in-Time Recovery (PITR)
+
+If you don't know this, you don't run a production database. Backups are not optional.
+
+### pg_dump — Logical Backup
+
+Exports SQL statements that recreate your data. Works across Postgres versions. Selective (per-database, per-table).
+
+```bash
+# Dump a single database (SQL format):
+pg_dump -h localhost -U postgres mydb > backup.sql
+
+# Restore:
+psql -h localhost -U postgres mydb < backup.sql
+
+# Custom format (compressed, faster restore, supports parallel):
+pg_dump -h localhost -U postgres -Fc mydb > backup.dump
+
+# Restore custom format:
+pg_restore -h localhost -U postgres -d mydb backup.dump
+
+# Parallel restore (uses N jobs, much faster for large DBs):
+pg_restore -h localhost -U postgres -d mydb -j 4 backup.dump
+
+# Dump only specific tables:
+pg_dump -t anomaly_routes -t cities mydb > tables.sql
+
+# Dump only schema (no data):
+pg_dump --schema-only mydb > schema.sql
+
+# Dump only data (no schema):
+pg_dump --data-only mydb > data.sql
+
+# Dump all databases + roles + tablespaces:
+pg_dumpall -h localhost -U postgres > full_cluster.sql
+```
+
+**Limitations of pg_dump:**
+- It's a snapshot — takes time to run, DB keeps changing during dump
+- For large databases, the window of inconsistency grows
+- Cannot restore to a specific point in time between dumps
+
+### pg_basebackup — Physical Backup
+
+Copies the entire data directory at the filesystem level. Fast, consistent, used as the starting point for replicas and PITR.
+
+```bash
+# Create a base backup:
+pg_basebackup -h localhost -U replicator -D /backup/base -P -Ft -z
+# -Ft = tar format, -z = gzip compress, -P = progress
+
+# With WAL included (standalone, no streaming needed):
+pg_basebackup -h localhost -U replicator -D /backup/base -P -Ft -z --wal-method=fetch
+```
+
+### WAL Archiving — The Foundation of PITR
+
+WAL archiving continuously saves WAL segment files to a safe location. Combined with a base backup, you can replay WAL to any point in time.
+
+```ini
+# postgresql.conf:
+wal_level = replica
+archive_mode = on
+archive_command = 'cp %p /archive/wal/%f'
+# %p = full path to WAL file, %f = filename only
+
+# For S3 (using WAL-G or pgBackRest):
+archive_command = 'wal-g wal-push %p'
+```
+
+### Point-in-Time Recovery (PITR)
+
+Scenario: someone ran `DELETE FROM anomaly_routes WHERE city_id = 5` at 14:32 and shouldn't have. You need to restore to 14:31.
+
+```bash
+# 1. Stop the database
+pg_ctl stop -D /var/lib/postgresql/data
+
+# 2. Restore the base backup to a new location
+tar -xzf base.tar.gz -C /var/lib/postgresql/data_restore
+
+# 3. Create recovery configuration
+cat > /var/lib/postgresql/data_restore/postgresql.conf << EOF
+restore_command = 'cp /archive/wal/%f %p'
+recovery_target_time = '2026-04-11 14:31:00+06'
+recovery_target_action = 'promote'   -- become primary after reaching target
+EOF
+
+# Create the signal file that tells Postgres to recover (not start normally):
+touch /var/lib/postgresql/data_restore/recovery.signal
+
+# 4. Start Postgres — it will replay WAL up to 14:31 then stop
+pg_ctl start -D /var/lib/postgresql/data_restore
+
+# 5. Verify the data is correct, then promote or use for data extraction
+```
+
+**Recovery target options:**
+
+```sql
+recovery_target_time = '2026-04-11 14:31:00'   -- stop at this timestamp
+recovery_target_lsn  = '0/15D5FA8'             -- stop at this WAL position
+recovery_target_name = 'before_delete'          -- stop at a named restore point
+recovery_target_xid  = '12345'                  -- stop before this transaction
+recovery_target_inclusive = true                -- include/exclude the target itself
+```
+
+**Create named restore points (before risky operations):**
+
+```sql
+SELECT pg_create_restore_point('before_bulk_delete');
+-- Then run your risky operation
+-- If it goes wrong, PITR to 'before_bulk_delete'
+```
+
+### WAL-G — The Modern Backup Tool
+
+`pg_dump` + manual WAL archiving is error-prone. WAL-G automates base backups + WAL archiving + PITR to S3/GCS/Azure.
+
+```bash
+# Configuration (~/.walg.json or env vars):
+WALG_S3_PREFIX=s3://my-bucket/postgres-backups
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+
+# Take a base backup:
+wal-g backup-push /var/lib/postgresql/data
+
+# List backups:
+wal-g backup-list
+
+# Restore to a point in time:
+wal-g backup-fetch /var/lib/postgresql/data LATEST
+# Then set recovery_target_time and start Postgres
+```
+
+---
+
+## 16. Extended Statistics — Fixing Correlated Column Estimates
+
+The planner assumes columns are **independent** when estimating rows for multi-column conditions. When columns are correlated, this assumption produces wildly wrong estimates, causing bad plans.
+
+### The Problem
+
+```sql
+-- In anomaly_routes: city_id=5 is always Bangladesh, and is_intercity=false for all BD routes
+-- Planner estimates for: WHERE city_id = 5 AND is_intercity = false
+-- Estimate for city_id=5:      1000 rows (10% of 10,000)
+-- Estimate for is_intercity=false: 5000 rows (50% of 10,000)
+-- Combined estimate (independence assumption): 1000 × 0.50 = 500 rows
+-- Reality: 1000 rows (100% of city_id=5 rows have is_intercity=false)
+
+EXPLAIN ANALYZE SELECT * FROM anomaly_routes
+WHERE city_id = 5 AND is_intercity = false;
+-- Plan expects 500, gets 1000 → wrong join strategy chosen
+```
+
+### The Fix — Extended Statistics
+
+```sql
+-- Tell Postgres these columns are correlated:
+CREATE STATISTICS stat_city_intercity ON city_id, is_intercity
+    FROM anomaly_routes;
+
+-- Refresh:
+ANALYZE anomaly_routes;
+
+-- Now check the estimate again — it should be much closer to reality
+EXPLAIN ANALYZE SELECT * FROM anomaly_routes
+WHERE city_id = 5 AND is_intercity = false;
+```
+
+### Types of Extended Statistics
+
+```sql
+-- 1. ndistinct: better estimate of distinct value combinations
+CREATE STATISTICS stat_city_status (ndistinct) ON city_id, status FROM anomaly_routes;
+
+-- 2. dependencies: detect functional dependencies between columns
+CREATE STATISTICS stat_city_intercity (dependencies) ON city_id, is_intercity FROM anomaly_routes;
+
+-- 3. mcv (most common values): track the most common combinations
+CREATE STATISTICS stat_city_status (mcv) ON city_id, status FROM anomaly_routes;
+
+-- All three at once (default when you omit the type):
+CREATE STATISTICS stat_all ON city_id, status, is_intercity FROM anomaly_routes;
+
+ANALYZE anomaly_routes;
+```
+
+```sql
+-- Inspect what was learned:
+SELECT stxname, stxkeys, stxdependencies, stxmcv
+FROM pg_statistic_ext
+JOIN pg_statistic_ext_data ON pg_statistic_ext.oid = pg_statistic_ext_data.stxoid
+WHERE stxrelid = 'anomaly_routes'::regclass;
+```
+
+**When to use:** Anytime you see `rows=X (estimated)` wildly different from `rows=Y (actual)` in `EXPLAIN ANALYZE` for a multi-column `WHERE`. That's a statistics problem, not an index problem.
+
+---
+
+## 17. JIT Compilation
+
+JIT (Just-In-Time) compilation, available since Postgres 11, compiles parts of a query to native machine code using LLVM at execution time. It helps for CPU-heavy analytical queries.
+
+### When JIT Helps vs Hurts
+
+**Helps:**
+- Long-running queries doing heavy arithmetic or many function calls (analytics, aggregations over millions of rows)
+- Queries where CPU is the bottleneck, not I/O
+
+**Hurts:**
+- Short OLTP queries — compilation overhead (~10ms) exceeds any gain
+- Queries that return quickly — JIT never gets to amortize its startup cost
+
+### Configuration
+
+```ini
+# postgresql.conf:
+jit = on                            # enable JIT globally (default: on in pg 12+)
+jit_above_cost = 100000             # only JIT queries with estimated cost above this
+jit_inline_above_cost = 500000      # inline function calls above this cost
+jit_optimize_above_cost = 500000    # apply expensive optimizations above this cost
+```
+
+```sql
+-- Check if JIT was used in a query:
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT city_id, SUM(anomaly_score), AVG(estimated_distance)
+FROM anomaly_routes
+GROUP BY city_id;
+-- Look for: JIT: Functions: 8, Options: Inlining true, Optimization true
+-- Timing: Generation 2.345ms, Inlining 3.123ms, Optimization 45.23ms, Emission 12.34ms, Total 63ms
+
+-- Disable JIT for a specific query (useful if JIT is hurting a short query):
+SET jit = off;
+SELECT ...;
+RESET jit;
+```
+
+**Diagnosis:** If `EXPLAIN ANALYZE` shows JIT `Total Xms` is a significant fraction of the query's actual time, JIT is costing more than it saves. Raise `jit_above_cost` or disable it for that role.
+
+```sql
+-- Disable JIT for OLTP role (enable only for analytics role):
+ALTER ROLE app_user SET jit = off;
+ALTER ROLE analytics_user SET jit = on;
+ALTER ROLE analytics_user SET jit_above_cost = 50000;
+```
+
+---
+
+## 18. Zero-Downtime Migration Checklist
+
+Every schema change in production is a risk. This is the decision framework, in order.
+
+### Decision Tree
+
+```
+Is this change purely additive (new table, new nullable column, new index)?
+  → YES: Usually safe. Deploy anytime.
+  → NO: Continue ↓
+
+Does it require a table rewrite (type change, add NOT NULL without default)?
+  → YES: Must use multi-step migration below. Never do in one ALTER TABLE.
+  → NO: Continue ↓
+
+Does it acquire ACCESS EXCLUSIVE lock (ALTER TABLE, DROP)?
+  → YES: Set lock_timeout, deploy during low-traffic window.
+  → NO: Continue ↓
+```
+
+### Step-by-Step: Adding a NOT NULL Column
+
+```sql
+-- Step 1: Add nullable (instant, no lock worth worrying about)
+ALTER TABLE anomaly_routes ADD COLUMN priority INTEGER;
+
+-- Step 2: Backfill in batches to avoid long locks and excessive WAL
+DO $$
+DECLARE
+  batch_size INT := 10000;
+  max_id     INT;
+  cur_id     INT := 0;
+BEGIN
+  SELECT MAX(id) INTO max_id FROM anomaly_routes;
+  WHILE cur_id < max_id LOOP
+    UPDATE anomaly_routes
+    SET priority = 1
+    WHERE id > cur_id AND id <= cur_id + batch_size AND priority IS NULL;
+    cur_id := cur_id + batch_size;
+    PERFORM pg_sleep(0.05);  -- brief pause to let replicas catch up
+  END LOOP;
+END $$;
+
+-- Step 3: Add constraint as NOT VALID (validates new rows only, no table scan, instant)
+ALTER TABLE anomaly_routes
+    ADD CONSTRAINT priority_not_null CHECK (priority IS NOT NULL) NOT VALID;
+
+-- Step 4: Validate (scans table but only holds SHARE UPDATE EXCLUSIVE lock — reads still work)
+ALTER TABLE anomaly_routes VALIDATE CONSTRAINT priority_not_null;
+
+-- Step 5: Convert to real NOT NULL (instant because constraint already validated)
+ALTER TABLE anomaly_routes ALTER COLUMN priority SET NOT NULL;
+ALTER TABLE anomaly_routes DROP CONSTRAINT priority_not_null;
+```
+
+### Step-by-Step: Adding an Index
+
+```sql
+-- NEVER do this on a live table (holds SHARE lock, blocks writes):
+CREATE INDEX idx_priority ON anomaly_routes(priority);
+
+-- ALWAYS use CONCURRENTLY:
+CREATE INDEX CONCURRENTLY idx_priority ON anomaly_routes(priority);
+-- Takes longer but only holds SHARE UPDATE EXCLUSIVE (reads and writes continue)
+
+-- If it fails midway, clean up the invalid index first:
+DROP INDEX CONCURRENTLY idx_priority_incomplete;
+-- Then retry
+```
+
+### Step-by-Step: Renaming a Column
+
+You cannot rename a column without an ACCESS EXCLUSIVE lock. The zero-downtime approach is expand/contract:
+
+```sql
+-- Phase 1 (deploy): add new column, write to both
+ALTER TABLE anomaly_routes ADD COLUMN priority_level INTEGER;
+
+-- Trigger to keep both in sync during transition:
+CREATE OR REPLACE FUNCTION sync_priority() RETURNS TRIGGER AS $$
+BEGIN
+    NEW.priority_level := NEW.priority;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_priority
+BEFORE INSERT OR UPDATE ON anomaly_routes
+FOR EACH ROW EXECUTE FUNCTION sync_priority();
+
+-- Backfill:
+UPDATE anomaly_routes SET priority_level = priority;
+
+-- Phase 2 (later deploy): update app to read from new column
+-- Phase 3 (final deploy): drop old column and trigger
+DROP TRIGGER trg_sync_priority ON anomaly_routes;
+ALTER TABLE anomaly_routes DROP COLUMN priority;
+```
+
+### Checklist Before Any Migration
+
+- [ ] Tested on a production-sized copy of the database
+- [ ] `SET lock_timeout = '3s'` before any DDL (prevents queuing behind long queries)
+- [ ] `SET statement_timeout` on backfill batches
+- [ ] Migration is idempotent (safe to run twice if it fails halfway)
+- [ ] Rollback plan exists and has been tested
+- [ ] Deployed during low-traffic window if any lock is involved
+- [ ] `ANALYZE` run after migration if row counts changed significantly
+- [ ] Replica lag monitored during migration
+
+---
+
+## 19. Change Data Capture (CDC)
+
+CDC streams every INSERT, UPDATE, DELETE from Postgres to other systems in real time — without polling. The source is the WAL.
+
+### Logical Decoding — The Engine Behind CDC
+
+Postgres can decode WAL into a human-readable change stream via **output plugins**. The built-in plugin is `pgoutput` (used by logical replication). Third-party plugins include `wal2json` and `decoderbufs`.
+
+```sql
+-- Requires: wal_level = logical (restart required if not already set)
+ALTER SYSTEM SET wal_level = 'logical';
+
+-- Create a replication slot with the wal2json output plugin:
+SELECT pg_create_logical_replication_slot('cdc_slot', 'wal2json');
+
+-- Peek at changes (non-destructive — slot remembers position):
+SELECT * FROM pg_logical_slot_peek_changes('cdc_slot', NULL, NULL,
+    'pretty-print', '1', 'include-timestamp', '1');
+
+-- Consume changes (advances the slot — changes are gone after this):
+SELECT * FROM pg_logical_slot_get_changes('cdc_slot', NULL, NULL);
+
+-- Drop when done:
+SELECT pg_drop_replication_slot('cdc_slot');
+```
+
+Sample `wal2json` output:
+
+```json
+{
+  "change": [{
+    "kind": "update",
+    "schema": "public",
+    "table": "anomaly_routes",
+    "columnnames": ["id", "status", "resolved_by"],
+    "columnvalues": [42, "ADMIN_APPROVED", "sourav@example.com"],
+    "oldkeys": {
+      "keynames": ["id"],
+      "keyvalues": [42]
+    }
+  }]
+}
+```
+
+### Debezium — Production CDC
+
+Debezium is the standard open-source CDC platform. It runs as a Kafka Connect connector, reads Postgres logical replication slots, and publishes every row change to Kafka topics.
+
+```
+Postgres WAL → Debezium (Kafka Connect) → Kafka Topics → Consumers
+                                                           (Elasticsearch, Redis, other DBs, analytics)
+```
+
+```json
+// Debezium connector configuration:
+{
+  "name": "postgres-cdc",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "localhost",
+    "database.port": "5432",
+    "database.user": "replicator",
+    "database.password": "secret",
+    "database.dbname": "mydb",
+    "database.server.name": "mydb",
+    "table.include.list": "public.anomaly_routes,public.user_contributions",
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_slot",
+    "publication.name": "debezium_pub",
+    "snapshot.mode": "initial"   // take initial snapshot then stream changes
+  }
+}
+```
+
+Each Kafka message contains `before` and `after` states of the row, the operation type, and a timestamp — enabling full event sourcing.
+
+### Direct Logical Replication (without Kafka)
+
+If you just need to sync one table to another Postgres database without the Kafka infrastructure:
+
+```sql
+-- Publisher:
+CREATE PUBLICATION anomaly_pub FOR TABLE anomaly_routes;
+
+-- Subscriber:
+CREATE SUBSCRIPTION anomaly_sub
+    CONNECTION 'host=primary dbname=mydb user=replicator password=secret'
+    PUBLICATION anomaly_pub;
+```
+
+### Use Cases
+
+| Use Case | Approach |
+|----------|----------|
+| Sync Postgres → Elasticsearch for search | Debezium → Kafka → Elasticsearch connector |
+| Invalidate Redis cache on row change | Debezium → Kafka consumer → Redis DEL |
+| Audit log of every data change | Logical decoding → append-only audit table |
+| Event sourcing — replay history | CDC → event store |
+| Zero-downtime major version upgrade | Logical replication to new-version replica, cut over |
+| Cross-region data sync | Logical replication to replica in another region |
+
+### Important Gotchas
+
+**Replication slot lag = disk fill.** If your CDC consumer falls behind, the slot holds WAL. Monitor it:
+
+```sql
+SELECT slot_name,
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS consumer_lag
+FROM pg_replication_slots
+WHERE slot_type = 'logical';
+```
+
+**Tables need a replica identity for UPDATE/DELETE.** Without it, Debezium can't send the `before` state:
+
+```sql
+-- Default: primary key only (usually fine)
+ALTER TABLE anomaly_routes REPLICA IDENTITY DEFAULT;
+
+-- Full: send all columns in before state (more WAL, but complete history)
+ALTER TABLE anomaly_routes REPLICA IDENTITY FULL;
 ```
 
 ---
