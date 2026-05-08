@@ -1,0 +1,1 @@
+<svg aria-hidden="true" class="pointer-events-none absolute inset-0 h-full w-full" focusable="false"><rect x="0.5" y="0.5" width="calc(100% - 1px)" height="calc(100% - 1px)" rx="28" ry="28" fill="none" stroke="var(--border-heavy)" stroke-dasharray="5 3" stroke-width="1" vector-effect="non-scaling-stroke"></rect></svg>
