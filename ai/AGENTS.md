@@ -38,7 +38,12 @@ TypeScript strict mode. No `any`; use `unknown` and narrow. Prefer Zod schemas i
 
 ## Working Rules
 
-State assumptions when unclear; ask before choosing between meaningfully different behaviors. Build only requested behavior; no speculative options, abstractions, or configurability. Keep edits surgical; do not reformat/refactor unrelated code. Match local style. Remove unused code created by your change. Mention unrelated dead code/risks; do not delete unless asked. Define success criteria for multi-step work and verify with narrowest useful checks.
+- Think before coding; state assumptions, surface tradeoffs, and ask when multiple behaviors are plausible.
+- Choose simplest solution; push back on overcomplication; no speculative features, abstractions, configurability, or impossible-case handling.
+- Keep edits surgical; every changed line should trace to user request.
+- Match local style; do not reformat, refactor, or "improve" unrelated code.
+- Clean only your own changes; remove newly unused code, mention unrelated dead code/risks without deleting.
+- For multi-step work, define success criteria, state brief plan, and verify with narrowest useful checks.
 
 ## Communication
 
