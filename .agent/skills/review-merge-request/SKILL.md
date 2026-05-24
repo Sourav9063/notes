@@ -8,54 +8,53 @@ user-invocable: true
 
 # Review Merge Request
 
-Use only when explicitly invoked with base branch name. Review current branch against that base branch with direct two-ref diff:
+Use only when explicitly invoked with base branch name. If missing, ask. Use direct two-ref diff only:
 
 ```bash
 git diff <base> HEAD
 ```
 
-If user does not provide base branch name, ask for it before reviewing.
-Do not use merge-base form (`<base>...HEAD`) unless user asks.
-
-## Goal
-
-Find actionable risks. Lead with evidence-backed findings, not summaries.
+Do not use merge-base form (`<base>...HEAD`) unless requested.
 
 ## Workflow
 
-1. Inspect context:
+1. Inspect minimal context:
    - `git status --short`
    - `git branch --show-current`
+   - `git diff --stat <base> HEAD`
    - `git diff --name-only <base> HEAD`
 
-2. Read high-risk changes first:
-   - Auth, permission, session, cookie, env, config.
-   - API boundaries, services, persistence, DB writes.
-   - Cache, navigation, error handling, shared hooks/providers.
-   - UI, docs, and tooling.
+2. Read `git diff <base> HEAD` first. Open only files/hunks needed to confirm risk. Use `git show <base>:path`, nearby files, or docs only when old behavior, shared contracts, or ownership are unclear.
 
-3. Compare against project patterns:
-   - Read nearby files and old versions with `git show <base>:path` when needed.
-   - Check local agent docs, feature docs, architecture boundaries, shared helpers, cache/data rules, and UI conventions.
+3. Prioritize risky areas:
+   - Auth, permissions, sessions, cookies, env, config, redirects, secret handling.
+   - API boundaries, validation, persistence, SQL, transactions, DB writes.
+   - Cache invalidation, navigation/routing, error handling, logging, shared state.
+   - Data shapes, null handling, URL params, pagination, filters.
+   - File/network access, uploads/downloads, external calls, dependencies.
+   - Tooling, docs, migrations, generated output that can break commands or mislead.
 
 4. Verify narrowly:
-   - Run project lint/check command unless docs-only or user says skip.
-   - Run project build/typecheck command when runtime or typed surface changed.
-   - Run focused tests when relevant.
+   - Run lint/check command unless docs-only or user says skip.
+   - Run build/typecheck command when runtime or typed surface changed.
+   - Run focused tests for changed risky logic.
 
 ## Review Checklist
 
-- Security: auth bypass, permission regression, secret leakage, unsafe redirects, input trust, SQL injection, missing transactions.
-- Correctness: wrong data shape, unchecked null/undefined, stale cache, broken pagination/filter/search params, boundary mistakes.
-- Architecture: separation of concerns, logic in correct layer, clear module ownership, side effects isolated, public contracts respected.
-- Maintainability: duplicated logic violates DRY, magic values lack named constants, speculative abstraction, dead code, unclear naming, inconsistent local patterns.
-- Type quality: avoid unsafe types/casts, ignored errors, missing validation for external input.
-- Tests/CI: missing focused tests for risky logic, lint/build/type failures, docs/tooling that mislead or break commands.
+- Security: auth bypass, permission regression, IDOR, CSRF/XSS/SSRF, secret leakage, unsafe redirects, insecure cookies/sessions, injection risk, path traversal, unsafe file upload/download.
+- Correctness: wrong data shape, unchecked null/undefined, stale cache, broken pagination/filter/search params, contract mismatch, hidden runtime assumptions, race conditions, non-idempotent retries.
+- Architecture: separation of concerns, logic in appropriate layer, clear module ownership, contained side effects, respected public contracts.
+- Maintainability: duplication that can drift, unexplained magic values, speculative abstraction, dead code, unclear naming, inconsistent local patterns, needless public API expansion.
+- Data safety: missing transaction/rollback safety, unsafe migration/backfill, backward-incompatible schema or API change, data loss/corruption risk.
+- Reliability: resource leaks, unbounded work, timeout/retry mistakes, missing cancellation/cleanup, noisy or sensitive logs.
+- Type quality: unsafe types/casts, ignored async failures, swallowed exceptions, missing validation or narrowing for external input.
+- Dependencies: vulnerable package, unexpected license/runtime requirement, supply-chain risk, generated lockfile/tooling drift.
+- Tests/CI: missing focused coverage for risky logic, lint/build/type failures, docs/tooling that mislead users or break commands.
 
 ## Finding Rules
 
 - Lead with findings, ordered by severity.
-- Each finding needs severity, file:line, failure mode, and fix direction.
+- Each finding needs severity, file:line, concrete failure mode, and fix direction.
 - Report style issues only when they create behavior or maintenance risk.
 - If no issues, say no blocking findings and state verification coverage/residual risk.
 - Mention uncertain assumptions separately, not as facts.
@@ -66,9 +65,7 @@ Severity:
 - Medium: edge-case bug or maintainability risk likely to cause defects.
 - Low: small quality/test gap with limited blast radius.
 
-## Output Format
-
-Use this shape:
+## Output
 
 ```md
 **Findings**
@@ -85,7 +82,7 @@ Use this shape:
 **Notes**
 
 - Diff used: `<base> HEAD`
-- Residual risks or assumptions.
+- Residual risks/assumptions
 ```
 
 Keep answer concise. No praise. No generic checklist dump.
