@@ -44,6 +44,7 @@ TypeScript strict mode. No `any`; use `unknown` and narrow. Prefer Zod schemas i
 - Match local style; do not reformat, refactor, or "improve" unrelated code.
 - Clean only your own changes; remove newly unused code, mention unrelated dead code/risks without deleting.
 - For multi-step work, define success criteria, state brief plan, and verify with narrowest useful checks.
+- If confusion arises around a plan/design, ask one question at a time with concise selectable options when supported, explore codebase instead of asking when possible, and continue until shared understanding.
 
 ## Communication
 
