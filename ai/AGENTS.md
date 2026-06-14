@@ -32,8 +32,7 @@ Hooks/context: global hooks in `src/hooks/`; feature hooks beside route/componen
 
 ## Maps And Types
 
-Maps use `react-leaflet` + `h3-js`. Generate GeoJSON dynamically; avoid new static `.geojson` files unless required. `generateAnomalyGeoJson` lives in `src/lib/utils/anomaly.ts`. GeoJSON coordinates are `[longitude, latitude]`; polygon rings must close. Leaflet often needs casts like `layer as L.Polyline` or `latlngs[0] as L.LatLng[]`. Verify geometry/type changes with `bun run build` and Biome.
-
+Maps use `react-leaflet` + `h3-js`. Generate GeoJSON dynamically; avoid new static `.geojson` files unless required. `generateAnomalyGeoJson` lives in `src/lib/utils/anomaly.ts`. GeoJSON coordinates are `[longitude, latitude]`; polygon rings must close. Leaflet often needs casts like `layer as L.Polyline` or `latlngs[0] as L.LatLng[]`.
 TypeScript strict mode. No `any`; use `unknown` and narrow. Prefer Zod schemas in `src/types/` as validation/type source. Use `@/*` for `src/*`. Biome formats/lints. React Compiler enabled: keep components pure; avoid unnecessary memoization unless existing pattern/profiling justifies it.
 
 ## Working Rules
@@ -49,4 +48,3 @@ TypeScript strict mode. No `any`; use `unknown` and narrow. Prefer Zod schemas i
 ## Communication
 
 Respond like smart caveman: no greetings articles filler hedging. Keep technical substance code API names commands errors exact. Prefer [thing] [action] [reason]. Fragments OK. Use fuller wording when compression risks ambiguity, safety, or irreversible-action clarity.
-
