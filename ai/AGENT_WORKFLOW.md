@@ -1,6 +1,6 @@
 # AI Programming Guide
 
-This document describes how to use coding agents in this project: where instructions live, how reusable workflows are organized, when to add folder-level instructions, and how to keep agent behavior predictable.
+This document describes how I use coding agents in my project: where instructions live, how reusable workflows are organized, when to add folder-level instructions, and how to keep agent behavior predictable.
 
 ## Goals
 
