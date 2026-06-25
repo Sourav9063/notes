@@ -35,6 +35,10 @@ Hooks/context: global hooks in `src/hooks/`; feature hooks beside route/componen
 Maps use `react-leaflet` + `h3-js`. Generate GeoJSON dynamically; avoid new static `.geojson` files unless required. `generateAnomalyGeoJson` lives in `src/lib/utils/anomaly.ts`. GeoJSON coordinates are `[longitude, latitude]`; polygon rings must close. Leaflet often needs casts like `layer as L.Polyline` or `latlngs[0] as L.LatLng[]`.
 TypeScript strict mode. No `any`; use `unknown` and narrow. Prefer Zod schemas in `src/types/` as validation/type source. Use `@/*` for `src/*`. Biome formats/lints. React Compiler enabled: keep components pure; avoid unnecessary memoization unless existing pattern/profiling justifies it.
 
+## Spec-Driven Development
+
+Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constraints and `agents/plans/` for scoped execution notes before coding. If asked to create or refine a plan, write the final plan to a new named file in `agents/plans/` before implementation. Align, execute, then verify against those specs; flag knowledge/plan conflicts immediately.
+
 ## Working Rules
 
 - Think before coding: state assumptions, tradeoffs, and confusion; when behavior is ambiguous, surface options instead of picking silently.
