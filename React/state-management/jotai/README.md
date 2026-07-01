@@ -484,7 +484,7 @@ const selectedPostAtom = atom((get) => {
 });
 ```
 
-This is the pattern used by this repository's `/post` page.
+This pattern supports user-triggered loading with Suspense and request caching.
 
 ## Debugging
 
@@ -871,9 +871,9 @@ For React tests, wrap components in `Provider` if they need isolated atom state.
 - `atomWithStorage` reads browser storage on the client; avoid assuming the server knows the stored value.
 - `atomFamily` can leak memory if you create unbounded params and never remove them.
 
-## Current Repo Pattern
+## Interactive Cached Data Pattern
 
-This repository's `/post` page uses a good Jotai pattern for interactive data:
+A useful Jotai pattern for interactive data uses:
 
 - `postId`: selected id.
 - `postCache`: resolved posts or in-flight promises by id.
@@ -883,53 +883,56 @@ This repository's `/post` page uses a good Jotai pattern for interactive data:
 
 This keeps the first render server-assisted while later navigation stays client-side and cached.
 
-## Lazy Async Atom In Client-Controlled UI
+## Lazy Server Action Data In Client-Controlled UI
 
-Use an async atom when data is needed only after client state opens a sheet,
-dialog, or similar UI. Reading the atom starts the request, so keep the read
-inside the conditionally mounted feature instead of the page-level client
-component.
+When data is needed only after a user opens a sheet or dialog, use a write atom
+to call the Server Action and put its Promise in a cache atom. A
+synchronous read atom throws the in-flight Promise to suspend the component.
+The user event, not render, starts the request.
 
 ```ts
-export const actionMetaAtom = atom(async () => {
-  const result = await getStrikeActionMeta();
-  if (!result.success) throw new Error(result.error.message);
-  return result.data;
+const profileCacheAtom = atom<Profile[] | Promise<Profile[]> | null>(null);
+
+export const profilesAtom = atom((get) => {
+  const value = get(profileCacheAtom);
+  if (value instanceof Promise) throw value;
+  if (value === null) throw new Error("Profiles were not loaded.");
+  return value;
+});
+
+export const loadProfilesAtom = atom(null, (get, set) => {
+  if (get(profileCacheAtom) !== null) return;
+
+  const request = getProfiles();
+  set(profileCacheAtom, request);
+  void request.then(
+    (profiles) => set(profileCacheAtom, profiles),
+    () => undefined,
+  );
 });
 ```
 
-Place `Suspense` at the call site immediately above the component that reads
-the async atom:
+Do not invoke a Server Action from an async atom read: atom reads run during
+render, while Next.js Server Action dispatch updates Router state. Combining
+them causes React's "Cannot update Router while rendering" warning. When Route
+Handlers are not used, call the Server Action from an async write atom triggered
+by a user event. Throw only the Promise from a pure synchronous read atom.
+
+Call the write atom from an event handler:
 
 ```tsx
-{selectedRecord ? (
-  <Suspense fallback={<p>Loading actions...</p>}>
-    <ActionForm record={selectedRecord} />
-  </Suspense>
-) : null}
-```
+const loadProfiles = useSetAtom(loadProfilesAtom);
 
-The form can read the atom directly. A loader wrapper or separate content
-component is unnecessary unless it provides a real reuse or test boundary.
-
-```tsx
-function ActionForm({ record }: ActionFormProps) {
-  const actionMeta = useAtomValue(actionMetaAtom);
-  // Render the form with actionMeta.
-}
+<Button onClick={() => loadProfiles()}>View profiles</Button>;
 ```
 
 Operational behavior:
 
 - Opening the parent page does not fetch the data.
-- Mounting `ActionForm` reads the atom and starts the request.
-- The nearest `Suspense` handles the pending promise.
-- `Suspense` does not handle rejection. A rejected atom read bubbles to the
-  nearest React or Next.js error boundary.
-- A route-level `error.tsx` handles the failure but replaces the route UI. Use
-  a local Error Boundary when only the sheet should fail.
-- Do not use deprecated `loadable` in the installed Jotai version. Use direct
-  Suspense reads, or `unwrap` when explicit non-suspending state is required.
+- The click handler starts the Server Action.
+- Reading the stored Promise activates the nearest Suspense fallback.
+- Rejection reaches the nearest error boundary.
+- Resolved data replaces the Promise and prevents repeat requests.
 
 ## References
 
