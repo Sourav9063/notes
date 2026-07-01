@@ -883,6 +883,54 @@ This repository's `/post` page uses a good Jotai pattern for interactive data:
 
 This keeps the first render server-assisted while later navigation stays client-side and cached.
 
+## Lazy Async Atom In Client-Controlled UI
+
+Use an async atom when data is needed only after client state opens a sheet,
+dialog, or similar UI. Reading the atom starts the request, so keep the read
+inside the conditionally mounted feature instead of the page-level client
+component.
+
+```ts
+export const actionMetaAtom = atom(async () => {
+  const result = await getStrikeActionMeta();
+  if (!result.success) throw new Error(result.error.message);
+  return result.data;
+});
+```
+
+Place `Suspense` at the call site immediately above the component that reads
+the async atom:
+
+```tsx
+{selectedRecord ? (
+  <Suspense fallback={<p>Loading actions...</p>}>
+    <ActionForm record={selectedRecord} />
+  </Suspense>
+) : null}
+```
+
+The form can read the atom directly. A loader wrapper or separate content
+component is unnecessary unless it provides a real reuse or test boundary.
+
+```tsx
+function ActionForm({ record }: ActionFormProps) {
+  const actionMeta = useAtomValue(actionMetaAtom);
+  // Render the form with actionMeta.
+}
+```
+
+Operational behavior:
+
+- Opening the parent page does not fetch the data.
+- Mounting `ActionForm` reads the atom and starts the request.
+- The nearest `Suspense` handles the pending promise.
+- `Suspense` does not handle rejection. A rejected atom read bubbles to the
+  nearest React or Next.js error boundary.
+- A route-level `error.tsx` handles the failure but replaces the route UI. Use
+  a local Error Boundary when only the sheet should fail.
+- Do not use deprecated `loadable` in the installed Jotai version. Use direct
+  Suspense reads, or `unwrap` when explicit non-suspending state is required.
+
 ## References
 
 - Jotai docs: https://jotai.org/
