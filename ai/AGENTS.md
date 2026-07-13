@@ -39,6 +39,7 @@ TypeScript strict mode. No `any`; use `unknown` and narrow. Prefer Zod schemas i
 
 Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constraints and `agents/plans/` for scoped execution notes before coding. If asked to create or refine a plan, write the final plan to a new named file in `agents/plans/` before implementation. Align, execute, then verify against those specs; flag knowledge/plan conflicts immediately.
 
+
 ## Working Rules
 
 - Think before coding: state assumptions, tradeoffs, and confusion; when behavior is ambiguous, surface options instead of picking silently.
@@ -48,6 +49,7 @@ Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constrai
 - Keep edits surgical: every changed line should trace to the user request; match local style; if no code change is needed, report evidence instead.
 - Clean only own changes: remove newly unused code, mention unrelated dead code/risks without deleting.
 - Multi-step work needs brief plan, explicit success checks, and narrow verification loop until done.
+- Follow YAGNI principles, and one-liner solutions.
 
 ## Communication
 
