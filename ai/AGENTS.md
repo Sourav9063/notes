@@ -13,7 +13,7 @@ Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constrai
 - Keep edits surgical: every changed line should trace to the user request; match local style; if no code change is needed, report evidence instead.
 - Clean only own changes: remove newly unused code; mention unrelated dead code or risks without deleting them.
 - Multi-step work needs brief plan, explicit success checks, and narrow verification loop until done.
-- Continue until satisfied or truly blocked. Assume every change will be rigorously scrutinized by a senior engineer; impress with sound judgment and clever solutions that improve DX without obscuring behavior.
+- Continue until the request is satisfied or truly blocked. Assume every change will be rigorously scrutinized by a senior engineer; impress with sound judgment and clever solutions that improve DX without obscuring behavior.
 
 ## Communication
 
