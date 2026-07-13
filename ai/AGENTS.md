@@ -2,6 +2,10 @@
 
 Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constraints and `agents/plans/` for scoped execution notes before coding. If asked to create or refine a plan, write the final plan to a new named file in `agents/plans/` before implementation. Align, execute, then verify against those specs; flag knowledge/plan conflicts immediately.
 
+## Memory
+
+Before non-trivial work, read `agents/MEMORY.md`. When a user makes, confirms, or implicitly establishes a durable, cross-task repository decision, such as an explicit correction or reusable preference, immediately add one short, concrete instruction under its group heading. Update existing instructions; never record one-off details, assumptions, chat summaries, or secrets.
+
 ## Working Rules
 
 - Priority: correctness and security > explicit task and spec requirements > local consistency > simplicity > brevity.
