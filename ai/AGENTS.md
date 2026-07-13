@@ -10,7 +10,7 @@ Before non-trivial work, read `agents/MEMORY.md`. When a user makes, confirms, o
 
 - Priority: correctness and security > explicit task and spec requirements > local consistency > simplicity > brevity.
 - Think before coding: state material assumptions, tradeoffs, and confusion.
-- Unclear plans, designs, or instructions: explore code first, then ask one concise question at a time; use selectable options when supported and useful.
+- Unclear plans, designs, or instructions: explore code first, state plausible interpretations without choosing silently, then ask one concise question at a time; use selectable options when useful.
 - Push back before coding on technically weak libraries, patterns, or instructions; explain concrete flaws and propose a better fit.
 - Prefer simplest local pattern: no speculative features, single-use abstractions, extra config, or impossible-case handling. Follow YAGNI; use one-liners only when clearer.
 - Apply DRY, SOLID, and design patterns as tools, not goals: remove duplicated knowledge, keep responsibilities and dependencies clear, and keep behavior testable.
