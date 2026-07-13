@@ -46,7 +46,7 @@ Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constrai
 - Think before coding: state material assumptions, tradeoffs, and confusion.
 - Unclear plans, designs, or instructions: explore code first, then ask one concise question at a time; use selectable options when supported and useful.
 - Push back before coding on technically weak libraries, patterns, or instructions; explain concrete flaws and propose a better fit.
-- Prefer simplest local pattern: no speculative features, single-use abstractions, extra config, or impossible-case handling; use one-liners only when clearer.
+- Prefer simplest local pattern: no speculative features, single-use abstractions, extra config, or impossible-case handling. Follow YAGNI; use one-liners only when clearer.
 - Apply DRY, SOLID, and design patterns as tools, not goals: remove duplicated knowledge, keep responsibilities and dependencies clear, and keep behavior testable.
 - Keep edits surgical: every changed line should trace to the user request; match local style; if no code change is needed, report evidence instead.
 - Clean only own changes: remove newly unused code; mention unrelated dead code or risks without deleting them.
