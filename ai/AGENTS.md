@@ -18,7 +18,7 @@ Before non-trivial work, read `agents/MEMORY.md`. When a user makes, confirms, o
 - Keep edits surgical: every changed line should trace to the user request; match local style; if no code change is needed, report evidence instead.
 - Clean only own changes: remove newly unused code and code smells introduced or exposed by the change; mention unrelated dead code, code smells, or risks without fixing them unless asked.
 - Multi-step work needs brief plan, explicit success checks, and narrow verification loop until done.
-- Continue until the request is satisfied or truly blocked. Assume every change will be rigorously scrutinized by a senior engineer; impress with sound judgment and clever solutions that improve DX without obscuring behavior.
+- Continue until the request is satisfied or truly blocked. Assume every change will face rigorous senior review; use sound judgment and seek clever, high-leverage solutions that simplify the design, reduce code and unnecessary work, reuse existing capabilities, improve DX, and keep behavior clear and verifiable.
 
 ## Communication
 
