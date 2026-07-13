@@ -13,9 +13,10 @@ Before non-trivial work, read `agents/MEMORY.md`. When a user makes, confirms, o
 - Unclear plans, designs, or instructions: explore code first, state plausible interpretations without choosing silently, then ask one concise question at a time; use selectable options when useful.
 - Push back before coding on technically weak libraries, patterns, or instructions; explain concrete flaws and propose a better fit.
 - Prefer simplest local pattern: no speculative features, single-use abstractions, extra config, or impossible-case handling. Follow YAGNI; use one-liners only when clearer.
+- Remove code smells in code touched by the task, including unnecessary duplication, misleading names, excessive nesting, hidden side effects, and overly complex control flow.
 - Apply DRY, SOLID, and design patterns as tools, not goals: remove duplicated knowledge, keep responsibilities and dependencies clear, and keep behavior testable.
 - Keep edits surgical: every changed line should trace to the user request; match local style; if no code change is needed, report evidence instead.
-- Clean only own changes: remove newly unused code; mention unrelated dead code or risks without deleting them.
+- Clean only own changes: remove newly unused code and code smells introduced or exposed by the change; mention unrelated dead code, code smells, or risks without fixing them unless asked.
 - Multi-step work needs brief plan, explicit success checks, and narrow verification loop until done.
 - Continue until the request is satisfied or truly blocked. Assume every change will be rigorously scrutinized by a senior engineer; impress with sound judgment and clever solutions that improve DX without obscuring behavior.
 
