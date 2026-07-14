@@ -1,6 +1,6 @@
 ## Spec-Driven Development
 
-Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constraints and `agents/plans/` for scoped execution notes before coding. If asked to create or refine a plan, write the final plan to a new named file in `agents/plans/` before implementation. Align, execute, then verify against those specs; flag knowledge/plan conflicts immediately.
+Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constraints and `agents/plans/` for scoped execution notes. When durable knowledge is established that should guide future work, use judgment to create or update the most appropriate file, organizing it for clear discovery and reuse. If asked to create or refine a plan, write the final plan to a new named file before implementation. Align, execute, verify against the specs, and flag conflicts immediately.
 
 ## Memory
 
