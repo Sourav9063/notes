@@ -6,7 +6,7 @@ Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constrai
 
 Before non-trivial work, read `agents/MEMORY.md`. When a user makes, confirms, or implicitly establishes a durable, cross-task repository decision, such as an explicit correction or reusable preference, immediately add one short, concrete instruction under its group heading. Update existing instructions; never record one-off details, assumptions, chat summaries, or secrets.
 
-## Working Rules
+## Engineering Principles
 
 - Priority: correctness and security > explicit task and spec requirements > local consistency > simplicity > brevity.
 - Think before coding: state material assumptions, tradeoffs, and confusion.
