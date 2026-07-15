@@ -4,7 +4,7 @@ Use SDD for non-trivial work. Read `agents/knowledge/` for architecture constrai
 
 ## Memory
 
-Before non-trivial work, read `agents/MEMORY.md`. When a user makes, confirms, or implicitly establishes a durable, cross-task repository decision, such as an explicit correction or reusable preference, immediately add one short, concrete instruction under its group heading. Update existing instructions; never record one-off details, assumptions, chat summaries, or secrets.
+Before non-trivial work, read `agents/MEMORY.md`. Reserve memory for durable, cross-task instructions that should shape general repository work, such as explicit corrections, repository-wide decisions, and reusable preferences; task-specific guidance belongs in `agents/knowledge/`. When the user establishes such an instruction, immediately add one short, concrete entry under the appropriate heading, updating an existing entry instead of duplicating it. Never record one-off details, assumptions, chat summaries, or secrets.
 
 ## Engineering Principles
 
