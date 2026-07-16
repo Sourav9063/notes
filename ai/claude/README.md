@@ -1,3 +1,7 @@
+# Lean claude code
+```bash
+claude --bare --strict-mcp-config --tools "Bash,Read,Grep,Glob,Edit,Write"
+```
 
 # Anatomy of the .claude Folder - Every File Explained (2026) - codewithmukesh 
 # https://codewithmukesh.com/blog/anatomy-of-the-claude-folder/
