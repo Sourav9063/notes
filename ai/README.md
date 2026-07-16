@@ -6,28 +6,22 @@
 set -euo pipefail
 
 url='https://raw.githubusercontent.com/Sourav9063/notes/refs/heads/main/ai/AGENTS.md'
-remote="$(mktemp)"
-trap 'rm -f "$remote"' EXIT
-
-curl -fsSL "$url" > "$remote"
+content="$(curl -fsSL "$url")"
 
 for file in CLAUDE.md AGENTS.md GEMINI.md; do
     touch "$file"
 
-    # -i.bak works with both GNU sed and macOS/BSD sed.
-    sed -i.bak '/^## Spec-Driven Development$/,$d' "$file"
-    rm -f "$file.bak"
+    if grep -q '^## Spec-Driven Development$' "$file"; then
+        sed -i.bak '/^## Spec-Driven Development$/,$d' "$file"
+        rm -f "$file.bak"
+    fi
 
-    [[ ! -s "$file" ]] || printf '\n' >> "$file"
-    cat "$remote" >> "$file"
+    printf '%s\n' "$content" >> "$file"
 done
 ```
 
-Behavior:
-
-* Marker found → removes it and everything after it, then inserts the remote content.
-* Marker absent → appends the remote content.
-* File absent → creates it.
-* Remote download fails → stops without continuing.
+* Marker exists: replace from the marker to the end.
+* Marker absent: append.
+* File absent: create it.
 
 For **native Windows**, use Git Bash or WSL to run the same script.
