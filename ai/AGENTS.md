@@ -9,7 +9,7 @@ Treat both as the contract; implement and verify against them, and surface confl
 
 ## Memory
 
-Before non-trivial work, read `agents/MEMORY.md`. Reserve memory for durable, cross-task instructions that should shape general repository work across sessions, such as corrections, repository-wide decisions, and reusable preferences. Capture explicit or implied guidance as short, concrete entries; update instead of duplicating. Put implementation detail in `agents/knowledge/`. Never record task details, chat summaries, temporary context, or secrets.
+Before non-trivial work, read `agents/MEMORY.md`. Memory controls how agents work. Capture only short, durable, cross-task guidance established through successful work or new context—corrections, repository-wide decisions, and reusable preferences—to support incremental self-improvement. Memory should never store task details, chat summaries, temporary context, implementation-specific knowledge, or secrets.
 
 ## Engineering Principles
 
