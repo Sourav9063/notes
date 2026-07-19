@@ -6,7 +6,25 @@ Jotai is an atomic state management library for React. An atom is a small unit o
 
 An atom created with `atom()` is an immutable config object, not the value itself. The value lives in a Jotai store. A `Provider` creates a scoped store for its subtree; without a `Provider`, Jotai uses an implicit global store.
 
-Use atoms for client-side state: form values, UI flags, caches, local optimistic data, derived values, and action coordination. In Next.js App Router, keep atoms in Client Components and pass server-fetched initial data into them when needed.
+Use atoms for client-side state: form values, UI flags, caches, local optimistic data, derived values, and action coordination. Atom configs can live in shared modules. In Next.js App Router, components that use Jotai hooks or browser APIs must be Client Components; pass server-fetched initial data into them when needed.
+
+### Single Source of Truth
+
+"Single source of truth" means one authoritative owner for each fact, not that
+all state must live in Jotai:
+
+- The server/API owns persisted server data.
+- The URL owns shareable navigation, filter, sort, and pagination state.
+- Browser storage owns persisted client preferences.
+- Jotai owns the current client working state, local optimistic state, and
+  explicitly managed client caches.
+- Derived atoms project existing state. Do not copy a derived value into a
+  second writable atom unless an explicit synchronization boundary owns it.
+
+Hydrating server data transfers an initial snapshot into a Jotai store. Decide
+whether Jotai becomes the client authority after that point or whether later
+server payloads must explicitly replace it. Do not leave both independently
+writable.
 
 ## What Jotai Passes to Atom Functions
 
@@ -155,13 +173,34 @@ export const dollarsAtom = atom(
 
 An atom read function can return a promise. Components reading it should be inside `Suspense`, or you can wrap it with `loadable`.
 
+Use a checked, validated fetch boundary. `fetch` does not reject for HTTP 4xx or
+5xx responses, and decoded JSON is untrusted input.
+
+```ts
+async function fetchJson<T>(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  parse: (value: unknown) => T,
+): Promise<T> {
+  const response = await fetch(input, init);
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  const value: unknown = await response.json();
+  return parse(value);
+}
+```
+
+In real code, `parse` should normally be a schema parser such as
+`userSchema.parse`, not a type assertion.
+
 ```ts
 const userIdAtom = atom(1);
 
 export const userAtom = atom(async (get, { signal }) => {
   const id = get(userIdAtom);
-  const response = await fetch(`/api/users/${id}`, { signal });
-  return response.json();
+  return fetchJson(`/api/users/${id}`, { signal }, userSchema.parse);
 });
 ```
 
@@ -182,26 +221,58 @@ Important: an async write atom does not suspend the component just because the w
 ```ts
 type Post = { id: number; title: string };
 
+type CacheEntry<T> =
+  | { status: "pending"; request: Promise<T> }
+  | { status: "success"; data: T }
+  | { status: "error"; error: unknown };
+
 const postIdAtom = atom(1);
-const postCacheAtom = atom<Record<number, Post | Promise<Post>>>({});
+const postCacheAtom = atom<Record<number, CacheEntry<Post>>>({});
 
 export const selectPostAtom = atom(null, async (get, set, id: number) => {
   const cached = get(postCacheAtom)[id];
 
-  if (cached) {
+  if (cached?.status === "success") {
     set(postIdAtom, id);
-    return cached;
+    return cached.data;
   }
 
-  const request = fetch(`/api/posts/${id}`).then((res) => res.json());
-  set(postCacheAtom, (cache) => ({ ...cache, [id]: request }));
+  if (cached?.status === "pending") {
+    set(postIdAtom, id);
+    return cached.request;
+  }
+
+  const request = fetchJson(`/api/posts/${id}`, undefined, postSchema.parse);
+  set(postCacheAtom, (cache) => ({
+    ...cache,
+    [id]: { status: "pending", request },
+  }));
   set(postIdAtom, id);
 
-  const post = await request;
-  set(postCacheAtom, (cache) => ({ ...cache, [id]: post }));
-  return post;
+  try {
+    const post = await request;
+    set(postCacheAtom, (cache) =>
+      cache[id]?.status === "pending" &&
+      cache[id].request === request
+        ? { ...cache, [id]: { status: "success", data: post } }
+        : cache,
+    );
+    return post;
+  } catch (error) {
+    set(postCacheAtom, (cache) =>
+      cache[id]?.status === "pending" &&
+      cache[id].request === request
+        ? { ...cache, [id]: { status: "error", error } }
+        : cache,
+    );
+    throw error;
+  }
 });
 ```
+
+The error entry permits a later `selectPostAtom` call to retry. Comparing the
+stored request before settling prevents an older request from overwriting a
+newer cache entry.
 
 The returned `post` is returned to the caller of the setter:
 
@@ -211,6 +282,10 @@ const post = await selectPost(2);
 ```
 
 It is not readable state unless you also store it with `set`.
+Because this async setter can reject, an event handler that calls it must
+`await`/catch it or deliberately pass the returned Promise to another error
+handling boundary. Suspense handling a stored request does not automatically
+handle the separate Promise returned to the event caller.
 
 ### Async Read-Write Atoms
 
@@ -224,15 +299,18 @@ const userIdAtom = atom(1);
 export const editableUserAtom = atom(
   async (get, { signal }): Promise<User> => {
     const id = get(userIdAtom);
-    const response = await fetch(`/api/users/${id}`, { signal });
-    return response.json();
+    return fetchJson(`/api/users/${id}`, { signal }, userSchema.parse);
   },
   async (_get, set, update: { id: number; name?: string }) => {
     if (update.name) {
-      await fetch(`/api/users/${update.id}`, {
+      const response = await fetch(`/api/users/${update.id}`, {
         method: "PATCH",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: update.name }),
       });
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
     }
 
     set(userIdAtom, update.id);
@@ -279,7 +357,7 @@ export function EditableUserWithSuspense() {
 ```ts
 export const userAtom = atom(async (get, { signal }) => {
   const id = get(userIdAtom);
-  return fetch(`/api/users/${id}`, { signal }).then((res) => res.json());
+  return fetchJson(`/api/users/${id}`, { signal }, userSchema.parse);
 });
 ```
 
@@ -392,8 +470,7 @@ const postIdAtom = atom(1);
 
 const postAtom = atom(async (get, { signal }) => {
   const id = get(postIdAtom);
-  const response = await fetch(`/api/posts/${id}`, { signal });
-  return response.json();
+  return fetchJson(`/api/posts/${id}`, { signal }, postSchema.parse);
 });
 ```
 
@@ -402,6 +479,7 @@ const postAtom = atom(async (get, { signal }) => {
 
 import { Suspense } from "react";
 import { useAtomValue } from "jotai";
+import { ErrorBoundary } from "react-error-boundary";
 
 function PostTitle() {
   const post = useAtomValue(postAtom);
@@ -410,9 +488,11 @@ function PostTitle() {
 
 export function PostScreen() {
   return (
-    <Suspense fallback={<p>Loading post...</p>}>
-      <PostTitle />
-    </Suspense>
+    <ErrorBoundary fallback={<p>Could not load post.</p>}>
+      <Suspense fallback={<p>Loading post...</p>}>
+        <PostTitle />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 ```
@@ -446,7 +526,7 @@ const safeUserAtom = unwrap(userAtom, () => ({ id: 0, name: "Loading" }));
 const safeUserNameAtom = atom((get) => get(safeUserAtom).name);
 ```
 
-For rejected promises, Suspense handles only loading. Use an error boundary for errors, or use `loadable` if you want to render error state manually inside the component.
+For rejected promises, Suspense handles only loading. Use an error boundary for errors, or use `loadable` if you want to render error state manually inside the component. An error boundary also needs a reset/retry path; resetting without invalidating or replacing a rejected cached request will throw the same error again.
 
 ### Loading from User Actions
 
@@ -456,35 +536,71 @@ An async write alone does not trigger Suspense. To show a Suspense fallback from
 type Post = { id: number; title: string };
 
 const selectedPostIdAtom = atom(1);
-const cacheAtom = atom<Record<number, Post | Promise<Post>>>({});
+const cacheAtom = atom<Record<number, CacheEntry<Post>>>({});
 
-const selectPostAtom = atom(null, async (get, set, id: number) => {
+const selectPostAtom = atom(null, (get, set, id: number) => {
   const cached = get(cacheAtom)[id];
 
-  if (cached) {
+  if (cached?.status === "success" || cached?.status === "pending") {
     set(selectedPostIdAtom, id);
     return;
   }
 
-  const request = fetch(`/api/posts/${id}`).then((res) => res.json());
-  set(cacheAtom, (cache) => ({ ...cache, [id]: request }));
+  const request = fetchJson(`/api/posts/${id}`, undefined, postSchema.parse);
+  set(cacheAtom, (cache) => ({
+    ...cache,
+    [id]: { status: "pending", request },
+  }));
   set(selectedPostIdAtom, id);
 
-  const post = await request;
-  set(cacheAtom, (cache) => ({ ...cache, [id]: post }));
+  void request.then(
+    (post) =>
+      set(cacheAtom, (cache) =>
+        cache[id]?.status === "pending" &&
+        cache[id].request === request
+          ? { ...cache, [id]: { status: "success", data: post } }
+          : cache,
+      ),
+    (error: unknown) =>
+      set(cacheAtom, (cache) =>
+        cache[id]?.status === "pending" &&
+        cache[id].request === request
+          ? { ...cache, [id]: { status: "error", error } }
+          : cache,
+      ),
+  );
 });
 
 const selectedPostAtom = atom((get) => {
   const id = get(selectedPostIdAtom);
-  const value = get(cacheAtom)[id];
+  const entry = get(cacheAtom)[id];
 
-  if (!value) return null;
-  if ("then" in value) throw value;
-  return value;
+  if (!entry) return null;
+  if (entry.status === "pending") throw entry.request;
+  if (entry.status === "error") throw entry.error;
+  return entry.data;
 });
 ```
 
-This pattern supports user-triggered loading with Suspense and request caching.
+This pattern supports user-triggered loading with Suspense, retry, request
+deduplication, and race-safe settlement. Keep the control that retries the load
+outside the error boundary, or have the boundary reset handler start a new load
+before resetting itself.
+
+### Cache Ownership and Invalidation
+
+A manual Jotai cache needs an explicit lifecycle:
+
+- Define what invalidates entries after mutations.
+- Define whether data is fresh forever, until explicit refresh, or for a TTL.
+- Bound or clean up caches with unbounded keys.
+- Clear user-specific entries on logout or identity changes.
+- Keep the server/API authoritative; the Jotai cache is a client snapshot.
+
+For request deduplication, retries, background refetching, stale times, garbage
+collection, or mutation invalidation across many resources, prefer a dedicated
+server-state solution such as `jotai-tanstack-query`. Use manual Promise caches
+only when their smaller lifecycle is explicit and tested.
 
 ## Debugging
 
@@ -510,6 +626,10 @@ export function JotaiProvider({ children }: { children: React.ReactNode }) {
   return <Provider>{children}</Provider>;
 }
 ```
+
+Scope the Provider to the required state lifetime. A root Provider keeps atom
+values alive across child-route navigation; a feature-scoped Provider resets
+them when that feature subtree unmounts.
 
 Jotai also exposes store APIs for advanced cases outside React.
 
@@ -621,6 +741,18 @@ Notes:
 - Use server components for initial fetches when possible; use Jotai for interactive client state after hydration.
 - For browser APIs such as `localStorage`, use Client Components only.
 
+`useHydrateAtoms` initializes; it does not synchronize. If `initialPost`
+changes while the same store remains mounted, `postDataAtom` will keep its
+existing value. Choose one deliberate strategy:
+
+- Treat Jotai as the client authority after the first hydration and update it
+  through atom actions.
+- Replace it explicitly when a newer server payload should win.
+- Mount a new feature-scoped Provider/store when the resource identity changes.
+
+Avoid `dangerouslyForceHydrate` as a normal synchronization mechanism; Jotai
+warns that it can behave incorrectly with concurrent rendering.
+
 ### URL and Router State
 
 Jotai state can be synced with the URL when the URL should preserve or share UI state, such as selected tabs, filters, pagination, map coordinates, or modal ids. Prefer Next.js route params and `searchParams` when the URL is the primary data source. Use URL-synced atoms when client interactions should update the URL without manually wiring every component to the router.
@@ -628,7 +760,7 @@ Jotai state can be synced with the URL when the URL should preserve or share UI 
 `atomWithHash` syncs one atom with `window.location.hash`.
 
 ```ts
-import { atomWithHash } from "jotai/utils";
+import { atomWithHash } from "jotai-location";
 
 const tabAtom = atomWithHash("tab", "overview");
 ```
@@ -698,6 +830,8 @@ Router-sync guidance:
 - Use hash state for local UI state that should not trigger server navigation.
 - In Next.js App Router, keep URL-synced atoms in Client Components and test browser back/forward behavior.
 - Avoid duplicating the same state in both router APIs and Jotai unless one clearly derives from the other.
+- Instantiate `atomWithLocation` only once for the application; multiple
+  instances can diverge because each synchronizes with `window.location`.
 
 ## Important Helpers
 
@@ -721,10 +855,14 @@ Router-sync guidance:
 - `atomWithReducer`, `useReducerAtom`: reducer-style updates.
 - `selectAtom`: subscribe to a selected slice; use when equality control is required.
 - `splitAtom`: turn an array atom into per-item atoms.
-- `atomWithHash`: sync atom state with `window.location.hash`.
 - `atomFamily`: parameterized atoms. It is deprecated in `jotai/utils`; prefer the `jotai-family` package for new code.
 - `useAtomCallback`: read/write atoms from callbacks.
 - `atomWithRefresh`: refresh async reads by triggering recomputation.
+
+### `jotai-location`
+
+- `atomWithHash`: sync atom state with `window.location.hash`.
+- `atomWithLocation`: sync one application-level atom with `window.location`.
 
 ### Helper Examples
 
@@ -735,6 +873,12 @@ import { atomWithStorage } from "jotai/utils";
 
 const themeAtom = atomWithStorage<"light" | "dark">("theme", "light");
 ```
+
+Next.js can prerender Client Components, where browser storage is unavailable.
+When supplying custom storage, resolve `window.localStorage` or
+`window.sessionStorage` behind a client guard. If rendered output depends on the
+stored value, use a client-only boundary or another deliberate hydration
+strategy to prevent server/client markup mismatch.
 
 Reset state with `atomWithReset`:
 
@@ -773,10 +917,9 @@ Create keyed atoms with an atom family package when each id needs its own atom:
 import { atomFamily } from "jotai-family";
 
 const postAtomFamily = atomFamily((id: number) =>
-  atom(async () => {
-    const response = await fetch(`/api/posts/${id}`);
-    return response.json();
-  }),
+  atom(async (_get, { signal }) =>
+    fetchJson(`/api/posts/${id}`, { signal }, postSchema.parse),
+  ),
 );
 ```
 
@@ -785,10 +928,9 @@ Use `atomWithRefresh` when an async atom needs explicit refetching:
 ```ts
 import { atomWithRefresh } from "jotai/utils";
 
-const currentUserAtom = atomWithRefresh(async () => {
-  const response = await fetch("/api/me");
-  return response.json();
-});
+const currentUserAtom = atomWithRefresh(async (_get, { signal }) =>
+  fetchJson("/api/me", { signal }, userSchema.parse),
+);
 
 const refreshUserAtom = atom(null, (_get, set) => set(currentUserAtom));
 ```
@@ -804,7 +946,7 @@ Jotai has separate packages for integrations:
 - `jotai-location`: URL/location atoms.
 - `jotai-optics`: focus into nested state.
 - `jotai-valtio`, `jotai-zustand`, `jotai-redux`: bridge other state libraries.
-- `jotai-cache`: caching helpers; this is listed as an extension package, not part of `jotai/utils`.
+- `jotai-cache`: third-party caching helpers documented by Jotai; it is not part of `jotai/utils`.
 
 ## TypeScript Patterns
 
@@ -891,32 +1033,62 @@ synchronous read atom throws the in-flight Promise to suspend the component.
 The user event, not render, starts the request.
 
 ```ts
-const profileCacheAtom = atom<Profile[] | Promise<Profile[]> | null>(null);
+type ProfilesState =
+  | { status: "idle" }
+  | { status: "pending"; request: Promise<Profile[]> }
+  | { status: "success"; data: Profile[] }
+  | { status: "error"; error: unknown };
+
+const profilesStateAtom = atom<ProfilesState>({ status: "idle" });
 
 export const profilesAtom = atom((get) => {
-  const value = get(profileCacheAtom);
-  if (value instanceof Promise) throw value;
-  if (value === null) throw new Error("Profiles were not loaded.");
-  return value;
+  const state = get(profilesStateAtom);
+  if (state.status === "pending") throw state.request;
+  if (state.status === "error") throw state.error;
+  if (state.status === "idle") return null;
+  return state.data;
 });
 
 export const loadProfilesAtom = atom(null, (get, set) => {
-  if (get(profileCacheAtom) !== null) return;
+  const current = get(profilesStateAtom);
+  if (current.status === "pending" || current.status === "success") return;
 
   const request = getProfiles();
-  set(profileCacheAtom, request);
+  set(profilesStateAtom, { status: "pending", request });
+
   void request.then(
-    (profiles) => set(profileCacheAtom, profiles),
-    () => undefined,
+    (profiles) =>
+      set(profilesStateAtom, (state) =>
+        state.status === "pending" && state.request === request
+          ? { status: "success", data: profiles }
+          : state,
+      ),
+    (error: unknown) =>
+      set(profilesStateAtom, (state) =>
+        state.status === "pending" && state.request === request
+          ? { status: "error", error }
+          : state,
+      ),
   );
+});
+
+export const invalidateProfilesAtom = atom(null, (_get, set) => {
+  set(profilesStateAtom, { status: "idle" });
 });
 ```
 
-Do not invoke a Server Action from an async atom read: atom reads run during
-render, while Next.js Server Action dispatch updates Router state. Combining
-them causes React's "Cannot update Router while rendering" warning. When Route
-Handlers are not used, call the Server Action from an async write atom triggered
-by a user event. Throw only the Promise from a pure synchronous read atom.
+Do not invoke a Server Action from an async atom read. Atom reads run as part of
+render, while a Server Action dispatch can update Next.js Router state. This can
+produce React's "Cannot update Router while rendering" warning. When a Route
+Handler is unavailable, call the Server Action from a synchronous write atom
+triggered by an event or effect. Throw only the stored Promise from a pure
+synchronous read atom.
+
+This is a narrow Next.js integration pattern, not the default fetch strategy.
+Server Functions are designed primarily for mutations, and Next.js currently
+dispatches client-side invocations one at a time. Prefer Server Components for
+initial reads and Route Handlers plus async read atoms for ordinary client-side
+or parallel data fetching.
 
 Call the write atom from an event handler:
 
@@ -933,6 +1105,12 @@ Operational behavior:
 - Reading the stored Promise activates the nearest Suspense fallback.
 - Rejection reaches the nearest error boundary.
 - Resolved data replaces the Promise and prevents repeat requests.
+- A rejected request becomes an error entry; calling `loadProfilesAtom` again
+  starts a retry.
+- Request identity checks prevent stale settlement from replacing a newer
+  cache entry.
+- `invalidateProfilesAtom` defines the explicit refetch boundary.
+- A component that can read the idle state must handle `null`.
 
 ## References
 
@@ -941,4 +1119,9 @@ Operational behavior:
 - Next.js guide: https://jotai.org/docs/guides/nextjs
 - SSR hydration: https://jotai.org/docs/utilities/ssr
 - Async utilities: https://jotai.org/docs/utilities/async
+- Async guide: https://jotai.org/docs/guides/async
+- Jotai cache extension: https://jotai.org/docs/extensions/cache
+- Jotai location extension: https://jotai.org/docs/extensions/location
+- Atom family and deprecation: https://jotai.org/docs/utilities/family
 - Next.js App Router Server and Client Components: https://nextjs.org/docs/app/getting-started/server-and-client-components
+- Next.js Server Functions: https://nextjs.org/docs/app/getting-started/mutating-data
