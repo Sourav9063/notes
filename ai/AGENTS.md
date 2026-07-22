@@ -3,7 +3,7 @@
 Use SDD for non-trivial work; read the relevant files in `agents/knowledge/` and `agents/plans/` first.
 
 - `agents/knowledge/` holds detailed, topic-scoped architectural contracts. Create or update the most discoverable file when requested or when successful work establishes reusable implementation knowledge. Keep it verified against the code.
-- `agents/plans/` holds finalized implementation plans. Build plans interactively: investigate, surface decisions, and refine with the user. Only after the user finalizes a plan, save it as a new, precisely named `.md` file before implementation.
+- `agents/plans/` holds working and finalized implementation plans. Build plans interactively: investigate, surface decisions, and refine with the user. After initial investigation, create a precisely named `.md` file and continuously update it throughout planning. Finalize the plan with user approval before implementation.
 
 Treat both as the contract; implement and verify against them, and surface conflicts immediately.
 
