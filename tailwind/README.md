@@ -1,5 +1,3 @@
-Here's a comprehensive comparison of Tailwind CSS classes with their equivalent CSS properties:
-
 # Tailwind CSS ↔ Raw CSS Comparison Cheatsheet
 
 ## 📐 Layout & Structure
@@ -135,3 +133,8 @@ Here's a comprehensive comparison of Tailwind CSS classes with their equivalent 
 >   @apply px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600;
 > }
 > ```
+
+## To find all tailwind warning and issues
+```bash
+find src -type f -not -path "src/components/ui/*" | xargs bun x tailwind-lint                                              
+```
