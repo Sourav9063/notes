@@ -8,6 +8,24 @@ set -euo pipefail
 url='https://raw.githubusercontent.com/Sourav9063/notes/refs/heads/main/ai/AGENTS.md'
 content="$(curl -fsSL "$url")"
 
+for f in AGENTS.md CLAUDE.md GEMINI.md; do
+    touch "$f"
+    sed -i.bak '/^## Spec-Driven Development$/,$d' "$f" && rm -f "$f.bak"
+    
+    [ "$f" = "AGENTS.md" ] && text="$content" || text="@AGENTS.md"
+    printf '%s\n' "$text" >> "$f"
+done
+
+```
+
+
+
+```bash
+set -euo pipefail
+
+url='https://raw.githubusercontent.com/Sourav9063/notes/refs/heads/main/ai/AGENTS.md'
+content="$(curl -fsSL "$url")"
+
 for file in CLAUDE.md AGENTS.md GEMINI.md; do
     touch "$file"
 
