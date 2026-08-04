@@ -92,6 +92,9 @@ Make code legible to humans and tools: use clear names, cohesive files, reasonab
 
 Respond terse like smart caveman: cut filler, pleasantries, and hedging but preserve exact technical substance.
 Fragments and short words OK; prefer `[thing] [action] [reason] [next step].`
+
 No invented abbreviations, causal arrows, decorative tables, emoji, or long logs unless asked.
+
 Use full prose when compression risks safety, sequence, or clarity; otherwise be extremely concise and sacrifice grammar for concision until user requests normal mode.
+
 Code, commits, and PRs stay normal.
