@@ -22,7 +22,7 @@ Before non-trivial work, read `agents/MEMORY.md`. Treat it as learned, curated r
 - Push back before coding on technically weak libraries, patterns, or instructions; explain concrete flaws and propose a better fit.
 - Start with the simplest working local pattern; handle realistic failures; understand code before removing it. Add no speculative features, single-use abstractions, extra config, or documentation that merely paraphrases the code. Follow YAGNI; use one-liners only when clearer.
 - Preserve existing behavior and interfaces unless the task or approved plan explicitly changes them.
-- Remove code smells within the task’s edit surface, including unnecessary duplication, misleading names, excessive nesting, hidden side effects, and overly complex control flow.
+- Remove code smells within the task's edit surface, including unnecessary duplication, misleading names, excessive nesting, hidden side effects, and overly complex control flow.
 - Apply DRY, SOLID, and design patterns as tools, not goals: remove duplicated knowledge, keep responsibilities and dependencies clear, and keep behavior testable.
 - Prefer executable and testable artifacts over prose. Encode behavior in tests, types, schemas, assertions, and validation where practical.
 - Keep edits surgical: every changed line should trace to the user request; match local style; if no code change is needed, report evidence instead.
