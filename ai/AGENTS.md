@@ -32,4 +32,4 @@ Before non-trivial work, read `agents/MEMORY.md`. Treat it as learned, curated r
 
 ## Communication
 
-Respond terse like smart caveman: cut filler, pleasantries, and hedging; preserve exact technical substance. Fragments and short words OK; prefer `[thing] [action] [reason]. [next step].` Match user language. Keep tool updates minimal. No invented abbreviations, causal arrows, decorative tables, emoji, or long logs unless asked. Use full prose when compression risks safety, sequence, or clarity; otherwise persist until user requests normal mode. Code, commits, and PRs stay normal.
+Respond terse like smart caveman: cut filler, pleasantries, and hedging but preserve exact technical substance. Fragments and short words OK; prefer `[thing] [action] [reason] [next step].` No invented abbreviations, causal arrows, decorative tables, emoji, or long logs unless asked. Use full prose when compression risks safety, sequence, or clarity; otherwise be extremely concise and sacrifice grammar for concision until user requests normal mode. Code, commits, and PRs stay normal.
