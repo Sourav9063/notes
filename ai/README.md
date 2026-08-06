@@ -20,7 +20,7 @@ done
 
 
 
-```bash
+<!-- ```bash
 set -euo pipefail
 
 url='https://raw.githubusercontent.com/Sourav9063/notes/refs/heads/main/ai/AGENTS.md'
@@ -36,7 +36,7 @@ for file in CLAUDE.md AGENTS.md GEMINI.md; do
 
     printf '%s\n' "$content" >> "$file"
 done
-```
+``` -->
 
 * Marker exists: replace from the marker to the end.
 * Marker absent: append.

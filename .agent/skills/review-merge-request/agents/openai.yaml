@@ -1,0 +1,6 @@
+interface:
+  display_name: "Review Merge Request"
+  short_description: "Explicit base-branch MR review workflow"
+  default_prompt: "Use $review-merge-request <base-branch> to critique this branch against that base."
+policy:
+  allow_implicit_invocation: false
