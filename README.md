@@ -159,9 +159,9 @@ Modern Vue.js development resources and guides.
 ### 🎨 Tailwind CSS
 Utility-first CSS framework resources.
 
-- [Tailwind CSS Guide](tailwind/README.md) - Comprehensive Tailwind to CSS comparison
-- [Tailwind Cheat Sheet](tailwind/cheat-sheet/README.md) - Quick reference guide
-- [Tailwind to CSS Converter](tailwind/tailwind-to-css/README.md) - Converting utilities to CSS
+- [Tailwind CSS Guide](tailwind/README.md) - Tailwind CSS v4 installation and migration guide
+- [Tailwind Cheat Sheet](tailwind/cheat-sheet/README.md) - Tailwind CSS v4.3 utility reference
+- [Tailwind to CSS Reference](tailwind/tailwind-to-css/README.md) - Conceptual utility-to-CSS mappings
 
 ---
 

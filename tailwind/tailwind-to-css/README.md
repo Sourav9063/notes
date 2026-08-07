@@ -2,6 +2,8 @@
 
 This reference explains the CSS produced conceptually by common Tailwind v4 utilities. Exact output can vary with theme tokens, variants, browser support transforms, and the Tailwind version.
 
+The family map below covers every utility category in the current [official v4.3 documentation](https://tailwindcss.com/docs), including logical properties and the v4.3 additions documented in the [release notes](https://tailwindcss.com/blog/tailwindcss-v4-3). `<...>` means a theme value, bare value, modifier, CSS variable, or arbitrary value depending on the utility.
+
 ## Core mappings
 
 | Tailwind v4 | Raw CSS concept |
@@ -36,6 +38,159 @@ This reference explains the CSS produced conceptually by common Tailwind v4 util
 | `hover:scale-105` | A hover rule using `scale: 105%;` |
 
 Values such as `--spacing`, `--color-blue-500`, `--text-base`, `--radius-lg`, and `--shadow-lg` come from Tailwind's generated theme variables. They are not fixed literals if the theme is customized.
+
+## Base styles
+
+```css
+@import "tailwindcss";
+```
+
+Conceptually, this imports Tailwind's theme variables, Preflight base layer, and utilities. Preflight applies `box-sizing: border-box`, removes default margins, resets borders to `0 solid`, and normalizes several browser defaults. It is not equivalent to one utility class and can affect third-party markup.
+
+## Complete utility-family map
+
+Use this as a property lookup. A single Tailwind family can emit more than one declaration, especially for shorthands, transforms, filters, rings, gradients, and responsive/state variants.
+
+| Tailwind v4 family | Raw CSS property or concept |
+| --- | --- |
+| `aspect-*` | `aspect-ratio` |
+| `columns-*` | `columns` |
+| `break-before-*`, `break-after-*`, `break-inside-*` | `break-before`, `break-after`, `break-inside` |
+| `box-decoration-*` | `box-decoration-break` |
+| `box-border`, `box-content` | `box-sizing` |
+| `block`, `inline`, `flex`, `grid`, `hidden`, and related display utilities | `display` |
+| `float-*` | `float` |
+| `clear-*` | `clear` |
+| `isolate`, `isolation-auto` | `isolation` |
+| `object-*` | `object-fit`, `object-position` |
+| `overflow-*`, `overflow-x-*`, `overflow-y-*` | `overflow`, `overflow-x`, `overflow-y` |
+| `overscroll-*`, `overscroll-x-*`, `overscroll-y-*` | `overscroll-behavior`, `overscroll-behavior-x`, `overscroll-behavior-y` |
+| `static`, `fixed`, `absolute`, `relative`, `sticky` | `position` |
+| `inset-*`, `inset-x-*`, `inset-y-*`, `inset-s-*`, `inset-e-*`, `inset-bs-*`, `inset-be-*`, `top-*`, `right-*`, `bottom-*`, `left-*` | `inset`, logical inset properties, `top`, `right`, `bottom`, `left` |
+| `visible`, `invisible`, `collapse` | `visibility` |
+| `z-*` | `z-index` |
+| `@container`, `@container-size` | `container-type` and container-name |
+| `basis-*` | `flex-basis` |
+| `flex-row`, `flex-col`, and related forms | `flex-direction` |
+| `flex-wrap`, `flex-nowrap`, `flex-wrap-reverse` | `flex-wrap` |
+| `flex-*` | `flex` |
+| `grow-*` | `flex-grow` |
+| `shrink-*` | `flex-shrink` |
+| `order-*` | `order` |
+| `grid-cols-*`, `col-span-*`, `col-start-*`, `col-end-*` | `grid-template-columns`, `grid-column` |
+| `grid-rows-*`, `row-span-*`, `row-start-*`, `row-end-*` | `grid-template-rows`, `grid-row` |
+| `grid-flow-*` | `grid-auto-flow` |
+| `auto-cols-*` | `grid-auto-columns` |
+| `auto-rows-*` | `grid-auto-rows` |
+| `gap-*`, `gap-x-*`, `gap-y-*` | `gap`, `column-gap`, `row-gap` |
+| `justify-*` | `justify-content` |
+| `justify-items-*`, `justify-self-*` | `justify-items`, `justify-self` |
+| `content-normal`, `content-center`, and related alignment values | `align-content` |
+| `items-*`, `self-*` | `align-items`, `align-self` |
+| `place-content-*`, `place-items-*`, `place-self-*` | `place-content`, `place-items`, `place-self` |
+| `p-*`, `px-*`, `py-*`, `ps-*`, `pe-*`, `pt-*`, `pr-*`, `pb-*`, `pl-*` | `padding` and its physical/logical sides |
+| `ps-*`, `pe-*`, `pbs-*`, `pbe-*` | `padding-inline-start`, `padding-inline-end`, `padding-block-start`, `padding-block-end` |
+| `m-*`, `mx-*`, `my-*`, `ms-*`, `me-*`, `mt-*`, `mr-*`, `mb-*`, `ml-*` | `margin` and its physical/logical sides |
+| `ms-*`, `me-*`, `mbs-*`, `mbe-*` | `margin-inline-start`, `margin-inline-end`, `margin-block-start`, `margin-block-end` |
+| `-m-*`, `-mx-*`, `-my-*`, and related forms | Negative margin values |
+| `space-x-*`, `space-y-*` | Sibling combinator margins |
+| `w-*`, `min-w-*`, `max-w-*` | `width`, `min-width`, `max-width` |
+| `h-*`, `min-h-*`, `max-h-*` | `height`, `min-height`, `max-height` |
+| `size-*` | Both `width` and `height` |
+| `inline-*`, `min-inline-*`, `max-inline-*` | `inline-size`, `min-inline-size`, `max-inline-size` |
+| `block-*`, `min-block-*`, `max-block-*` | `block-size`, `min-block-size`, `max-block-size` |
+| `font-*` family utilities | `font-family` |
+| `text-xs` … `text-9xl`, `text-[...]` | `font-size` and the configured line-height |
+| `antialiased`, `subpixel-antialiased` | `-webkit-font-smoothing`, `-moz-osx-font-smoothing` |
+| `italic`, `not-italic` | `font-style` |
+| `font-*` weight utilities | `font-weight` |
+| `font-stretch-*` | `font-stretch` |
+| `normal-nums`, `tabular-nums`, `oldstyle-nums`, and related forms | `font-variant-numeric` |
+| `font-features-*` | `font-feature-settings` |
+| `tracking-*` | `letter-spacing` |
+| `line-clamp-*` | `overflow`, `display`, `-webkit-box-orient`, and `-webkit-line-clamp` |
+| `leading-*` or `text-size/leading` | `line-height` |
+| `list-image-*`, `list-inside`, `list-outside`, `list-*` | `list-style-image`, `list-style-position`, `list-style-type` |
+| `text-left`, `text-center`, `text-right`, and related forms | `text-align` |
+| `text-<color>-<shade>` | `color` |
+| `placeholder-<color>-<shade>` | `::placeholder { color: ... }` |
+| `underline`, `overline`, `line-through`, `no-underline` | `text-decoration-line` |
+| `decoration-*` color/style/thickness utilities | `text-decoration-color`, `text-decoration-style`, `text-decoration-thickness` |
+| `underline-offset-*` | `text-underline-offset` |
+| `uppercase`, `lowercase`, `capitalize`, `normal-case` | `text-transform` |
+| `truncate`, `text-ellipsis`, `text-clip` | `overflow`, `text-overflow`, and often `white-space` |
+| `text-wrap`, `text-nowrap`, `text-balance`, `text-pretty` | `text-wrap` |
+| `indent-*` | `text-indent` |
+| `tab-*` | `tab-size` |
+| `align-*` | `vertical-align` |
+| `whitespace-*` | `white-space` |
+| `break-normal`, `break-words`, `break-all`, `break-keep`, `wrap-break-word` | `word-break`, `overflow-wrap` |
+| `hyphens-*` | `hyphens` |
+| `content-none`, `content-[...]`, `content-(--token)` | `content` |
+| `bg-fixed`, `bg-local`, `bg-scroll` | `background-attachment` |
+| `bg-clip-*` | `background-clip` |
+| `bg-<color>-<shade>` | `background-color` |
+| `from-*`, `via-*`, `to-*`, and stop-position utilities | Gradient custom properties and `background-image` |
+| `bg-[url(...)]`, `bg-linear-*`, `bg-radial-*`, `bg-conic-*` | `background-image` |
+| `bg-origin-*` | `background-origin` |
+| `bg-center`, `bg-top`, `bg-right`, `bg-bottom`, `bg-left`, and related forms | `background-position` |
+| `bg-repeat-*` | `background-repeat` |
+| `bg-auto`, `bg-cover`, `bg-contain` | `background-size` |
+| `rounded-*` | `border-radius` |
+| `border-*` width/color/style utilities | `border-width`, `border-color`, `border-style` |
+| `border-s-*`, `border-e-*`, `border-bs-*`, `border-be-*` | Logical border side properties |
+| `divide-*` | Child-combinator borders and their width/color/style |
+| `outline-*` | `outline-width`, `outline-color`, `outline-style`, `outline-offset` |
+| `shadow-*` | `box-shadow` |
+| `inset-shadow-*` | Inset `box-shadow` |
+| `inset-ring-*` | Inset ring `box-shadow` |
+| `ring-*`, `ring-inset`, `ring-offset-*` | Ring and ring-offset `box-shadow` layers |
+| `text-shadow-*` | `text-shadow` |
+| `opacity-*` | `opacity` |
+| `mix-blend-*`, `bg-blend-*` | `mix-blend-mode`, `background-blend-mode` |
+| `mask-clip-*`, `mask-composite-*`, `mask-[...]`, `mask-mode-*` | `mask-clip`, `mask-composite`, `mask-image`, `mask-mode` |
+| `mask-origin-*`, `mask-position-*`, `mask-repeat-*`, `mask-size-*`, `mask-type-*` | Corresponding mask properties |
+| `blur-*`, `brightness-*`, `contrast-*`, `drop-shadow-*`, `grayscale`, `hue-rotate-*`, `invert`, `saturate-*`, `sepia` | `filter` functions |
+| `backdrop-blur-*`, `backdrop-brightness-*`, and related forms | `backdrop-filter` functions |
+| `border-collapse`, `border-separate` | `border-collapse` |
+| `border-spacing-*`, `border-spacing-x-*`, `border-spacing-y-*` | `border-spacing` and its axes |
+| `table-auto`, `table-fixed` | `table-layout` |
+| `caption-top`, `caption-bottom` | `caption-side` |
+| `transition-*` | `transition-property` |
+| `transition-normal`, `transition-discrete` | `transition-behavior` |
+| `duration-*` | `transition-duration` |
+| `ease-*` | `transition-timing-function` |
+| `delay-*` | `transition-delay` |
+| `animate-*` | `animation` |
+| `backface-visible`, `backface-hidden` | `backface-visibility` |
+| `perspective-*`, `perspective-origin-*` | `perspective`, `perspective-origin` |
+| `rotate-*`, `scale-*`, `skew-*`, `translate-*` | Individual transform properties |
+| `transform`, `transform-none`, `transform-flat`, `transform-3d` | `transform`, `transform-style` |
+| `origin-*` | `transform-origin` |
+| `zoom-*` | `zoom` |
+| `accent-*` | `accent-color` |
+| `appearance-none`, `appearance-auto` | `appearance` |
+| `caret-*` | `caret-color` |
+| `scheme-*` | `color-scheme` |
+| `cursor-*` | `cursor` |
+| `field-sizing-fixed`, `field-sizing-content` | `field-sizing` |
+| `pointer-events-*` | `pointer-events` |
+| `resize-*` | `resize` |
+| `scroll-auto`, `scroll-smooth` | `scroll-behavior` |
+| `scrollbar-thumb-*`, `scrollbar-track-*` | `scrollbar-color` |
+| `scrollbar-auto`, `scrollbar-thin`, `scrollbar-none` | `scrollbar-width` |
+| `scrollbar-gutter-*` | `scrollbar-gutter` |
+| `scroll-m-*`, `scroll-p-*`, and logical variants | `scroll-margin`, `scroll-padding` |
+| `snap-*` | `scroll-snap-align`, `scroll-snap-stop`, `scroll-snap-type` |
+| `touch-*` | `touch-action` |
+| `select-*` | `user-select` |
+| `will-change-*` | `will-change` |
+| `fill-*` | `fill` |
+| `stroke-*` | `stroke`, `stroke-width` |
+| `sr-only`, `not-sr-only` | Visually hidden/revealed accessibility styles |
+| `forced-color-adjust-*` | `forced-color-adjust` |
+
+For a concrete utility, inspect its generated CSS rather than assuming the family has only one declaration. For example, `line-clamp-3` and `truncate` intentionally bundle several declarations, while `bg-blue-500/50` uses a color mix for opacity.
 
 ## Spacing and sizing
 
@@ -224,6 +379,76 @@ Use parentheses for CSS-variable shorthand: `bg-(--brand-color)`. Use underscore
 ```
 
 `@theme` creates design tokens and the matching utilities. `@utility` creates a variant-aware utility. `@custom-variant` creates a new variant. `@layer base` and `@layer components` remain ordinary CSS cascade layers; use `@utility` when the class must behave like a Tailwind utility.
+
+### v4 CSS directives
+
+| Directive | Raw CSS/build-time concept |
+| --- | --- |
+| `@import "tailwindcss"` | Import Tailwind's theme, Preflight, and utilities |
+| `@theme { --color-brand: ... }` | Declare design tokens and expose matching utility values |
+| `@theme inline { ... }` | Inline referenced theme variables into generated declarations |
+| `@theme static { ... }` | Emit theme variables even when no utility references them |
+| `@utility name { ... }` | Register a variant-aware custom utility |
+| `@variant hover { ... }` | Apply an existing variant inside authored CSS |
+| `@custom-variant name (...)` | Register a custom selector/media variant |
+| `@apply ...` | Substitute existing utility declarations into authored CSS |
+| `@reference "..."` | Load another stylesheet's theme/utilities for reference only |
+| `@source "..."` | Register an extra source path for class detection |
+| `@source not "..."` | Exclude a source path from class detection |
+| `@source inline("...")` | Safelist classes using brace expansion |
+| `@config "..."` | Load a legacy JavaScript config for compatibility |
+| `@plugin "..."` | Load a legacy plugin for compatibility |
+
+These directives are processed by Tailwind; they are not browser-native CSS. `@layer` itself remains a standard CSS cascade-layer feature.
+
+### Theme namespaces
+
+The namespace controls which utility or variant API a theme variable creates:
+
+| Theme namespace | Main generated API |
+| --- | --- |
+| `--color-*` | Color utilities such as `bg-*`, `text-*`, `border-*`, `fill-*`, `stroke-*`, `accent-*`, and `caret-*` |
+| `--font-*` | `font-*` family utilities |
+| `--text-*` | `text-*` font-size utilities |
+| `--font-weight-*` | `font-*` weight utilities |
+| `--tracking-*` | `tracking-*` utilities |
+| `--leading-*` | `leading-*` utilities |
+| `--tab-size-*` | `tab-*` utilities |
+| `--breakpoint-*` | Responsive breakpoint variants |
+| `--container-*` | Container-query variants and `max-w-*` container sizes |
+| `--spacing-*` | Spacing and sizing utilities |
+| `--radius-*` | `rounded-*` utilities |
+| `--shadow-*` | `shadow-*` utilities |
+| `--inset-shadow-*` | `inset-shadow-*` utilities |
+| `--drop-shadow-*` | `drop-shadow-*` utilities |
+| `--blur-*` | `blur-*` utilities |
+| `--perspective-*` | `perspective-*` utilities |
+| `--zoom-*` | `zoom-*` utilities |
+| `--aspect-*` | `aspect-*` utilities |
+| `--ease-*` | `ease-*` transition timing utilities |
+| `--animate-*` | `animate-*` utilities |
+
+### Build-time functions
+
+| Function | Conceptual result |
+| --- | --- |
+| `--alpha(var(--color-blue-500) / 50%)` | `color-mix(in oklab, var(--color-blue-500) 50%, transparent)` |
+| `--spacing(4)` | `calc(var(--spacing) * 4)` |
+| `--value(...)` | Resolve a functional `@utility` value from a theme, bare, or arbitrary candidate |
+| `--modifier(...)` | Resolve a functional utility modifier such as an opacity or percentage suffix |
+| `theme(spacing.12)` | Legacy theme lookup; deprecated in favor of CSS theme variables |
+
+### Functional custom utilities (v4.3)
+
+Functional utilities can resolve theme values, bare values, arbitrary values, and modifiers. `--default(...)` gives the bare class a fallback:
+
+```css
+@utility tab-* {
+  tab-size: --value(integer, --default(4));
+}
+```
+
+This produces the conceptual results `tab { tab-size: 4; }` and `tab-2 { tab-size: 2; }`. v4.3 also supports stacked and compound variants inside `@variant`, for example `@variant hover:focus { ... }` and `@variant hover, focus { ... }`.
 
 ## Component CSS and `@apply`
 
