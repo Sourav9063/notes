@@ -2,6 +2,10 @@
 
 A comprehensive collection of programming resources, cheat sheets, algorithms, design patterns, and development guides across multiple technologies and languages. This repository serves as a centralized knowledge base for developers working with modern web technologies, programming languages, and development tools.
 
+## Markdown Index
+
+Open [`index.html`](index.html) for a searchable browser that renders every tracked Markdown file. Regenerate it locally with `python3 scripts/generate_index.py`; the GitHub Actions workflow keeps it synchronized after Markdown changes. To publish it, enable GitHub Pages from the repository's `main` branch root.
+
 ## 📚 Repository Overview
 
 This repository contains curated documentation, examples, and reference materials for:
