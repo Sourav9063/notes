@@ -4,7 +4,7 @@ Status: complete
 
 ## Objective
 
-Provide a browsable, searchable website for every tracked Markdown file, with GitHub Actions keeping the generated entry point synchronized after Markdown changes.
+Provide a browsable, searchable website for every tracked Markdown file, with a manually runnable GitHub Actions workflow for refreshing the generated entry point.
 
 ## Decisions
 
@@ -13,7 +13,7 @@ Provide a browsable, searchable website for every tracked Markdown file, with Gi
 - Keep document content in the existing Markdown files. The browser fetches the selected file and renders it client-side.
 - Use pinned CDN versions of the Markdown renderer and sanitizer; disable unsafe raw HTML and sanitize rendered output.
 - Encode every path segment when fetching documents, preserving spaces and special characters in filenames.
-- Trigger synchronization on pushes to `main` that change Markdown files or the generator. Commit only when generated output changes.
+- Trigger synchronization only through `workflow_dispatch`. Commit only when generated output changes.
 - Do not add GitHub Pages deployment configuration; hosting remains a one-time repository setting outside this change.
 - Use a dark, documentation-focused visual system inspired by Nuxt's docs layout: dual navigation bars, compact left navigation, strong active states, and an optional right-side table of contents.
 
@@ -21,7 +21,7 @@ Provide a browsable, searchable website for every tracked Markdown file, with Gi
 
 1. Add `scripts/generate_index.py` to scan Markdown files, extract display titles, and render a deterministic catalog into `index.html`.
 2. Add the browser UI with directory navigation, search, document selection, loading/error states, and back/forward URL state.
-3. Add `.github/workflows/sync-index.yml` to regenerate and commit `index.html` on `main`.
+3. Add `.github/workflows/sync-index.yml` to regenerate and commit `index.html` when manually run.
 4. Document local generation and GitHub Pages usage in the root README.
 5. Add explicit outline scrolling and hash restoration for dynamically rendered headings.
 

@@ -4,7 +4,7 @@ A comprehensive collection of programming resources, cheat sheets, algorithms, d
 
 ## Markdown Index
 
-Open [`index.html`](index.html) for a searchable browser that renders every tracked Markdown file. Regenerate it locally with `python3 scripts/generate_index.py`; the GitHub Actions workflow keeps it synchronized after Markdown changes. To publish it, enable GitHub Pages from the repository's `main` branch root.
+Open [`index.html`](index.html) for a searchable browser that renders every tracked Markdown file. Regenerate it locally with `python3 scripts/generate_index.py`; or run **Sync Markdown index** manually from GitHub Actions. To publish it, enable GitHub Pages from the repository's `main` branch root.
 
 ## 📚 Repository Overview
 

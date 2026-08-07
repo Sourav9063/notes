@@ -1,16 +1,6 @@
 name: Sync Markdown index
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "*.md"
-      - "**/*.md"
-      - "*.MD"
-      - "**/*.MD"
-      - "scripts/generate_index.py"
-      - ".github/workflows/sync-index.yml"
   workflow_dispatch:
 
 permissions:
