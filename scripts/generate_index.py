@@ -132,6 +132,27 @@ def directory_count(catalog: list[dict[str, str]]) -> int:
     return len(directories)
 
 
+def render_sections(catalog: list[dict[str, str]]) -> str:
+    top_levels = {entry["path"].split("/", 1)[0] for entry in catalog}
+    directories = sorted(
+        (name for name in top_levels if any("/" in entry["path"] and entry["path"].split("/", 1)[0] == name for entry in catalog)),
+        key=str.casefold,
+    )
+    root_label = "Root"
+    sections = [
+        '<button class="section-link is-active" type="button" data-section="all">All notes</button>',
+        '<button class="section-link" type="button" data-section="__root__">{}</button>'.format(root_label),
+    ]
+    sections.extend(
+        '<button class="section-link" type="button" data-section="{name}">{label}</button>'.format(
+            name=html.escape(name, quote=True),
+            label=html.escape(name),
+        )
+        for name in directories
+    )
+    return "\n".join(sections)
+
+
 def safe_json(value: object) -> str:
     """Keep catalog data inert when embedded in a script element."""
 
@@ -147,6 +168,7 @@ def safe_json(value: object) -> str:
 
 def render_html(catalog: list[dict[str, str]]) -> str:
     tree = render_tree(build_tree(catalog))
+    sections = render_sections(catalog)
     template = r'''<!doctype html>
 <html lang="en">
 <head>
@@ -157,186 +179,210 @@ def render_html(catalog: list[dict[str, str]]) -> str:
   <title>Developer Notes</title>
   <style>
     :root {
-      color-scheme: light dark;
-      --bg: #f5f7fb;
-      --panel: #ffffff;
-      --panel-muted: #eef2f8;
-      --text: #172033;
-      --muted: #647089;
-      --border: #dbe1ec;
-      --accent: #335eea;
-      --accent-soft: #e6ebff;
-      --code: #202938;
-      --shadow: 0 18px 45px rgb(32 48 85 / 10%);
+      color-scheme: dark;
+      --bg: #050914;
+      --surface: #09101f;
+      --surface-raised: #111b2d;
+      --surface-hover: #17243a;
+      --text: #f5f7ff;
+      --muted: #8c9bb6;
+      --muted-bright: #b7c3d8;
+      --border: #1c2a42;
+      --border-bright: #2b3c5a;
+      --accent: #16d9a0;
+      --accent-soft: #082d2a;
+      --link: #9db4ff;
+      --code: #070c16;
     }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #101522;
-        --panel: #171e2d;
-        --panel-muted: #202a3b;
-        --text: #eef2ff;
-        --muted: #a7b2c8;
-        --border: #303c50;
-        --accent: #92aaff;
-        --accent-soft: #26365f;
-        --code: #0c111a;
-        --shadow: 0 18px 45px rgb(0 0 0 / 25%);
-      }
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #f4f6fb;
+      --surface: #ffffff;
+      --surface-raised: #eef2f8;
+      --surface-hover: #e4eaf5;
+      --text: #111827;
+      --muted: #68758b;
+      --muted-bright: #44516a;
+      --border: #d8dfeb;
+      --border-bright: #bdc8db;
+      --accent: #008a69;
+      --accent-soft: #dff8f0;
+      --link: #3153ba;
+      --code: #182235;
     }
-
     * { box-sizing: border-box; }
+    html { background: var(--bg); scroll-behavior: smooth; }
     body {
+      min-width: 320px;
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    a { color: var(--accent); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    a { color: var(--link); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .topbar {
       position: sticky;
       top: 0;
-      z-index: 5;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      min-height: 64px;
-      padding: .8rem 1.25rem;
-      border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--panel) 92%, transparent);
-      backdrop-filter: blur(12px);
-    }
-    .brand { color: var(--text); font-weight: 750; text-decoration: none; letter-spacing: -.02em; }
-    .repo-link { color: var(--muted); font-size: .85rem; }
-    .layout { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); min-height: calc(100vh - 65px); }
-    .sidebar {
-      position: sticky;
-      top: 65px;
-      align-self: start;
-      height: calc(100vh - 65px);
-      overflow: auto;
-      padding: 1.2rem .85rem 2rem 1rem;
-      border-right: 1px solid var(--border);
-      background: var(--panel);
-    }
-    .sidebar-header { padding: 0 .35rem .8rem; }
-    .sidebar-header h1 { margin: 0 0 .2rem; font-size: 1.05rem; }
-    .sidebar-header p { margin: 0; color: var(--muted); font-size: .82rem; }
-    .search {
-      width: 100%;
-      margin: .8rem 0 .55rem;
-      padding: .65rem .75rem;
-      border: 1px solid var(--border);
-      border-radius: .65rem;
-      background: var(--panel-muted);
-      color: var(--text);
-      font: inherit;
-    }
-    .search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .tree { display: grid; gap: .15rem; }
-    .directory { border-radius: .5rem; }
-    .directory[hidden] { display: none; }
-    .directory[open] { background: color-mix(in srgb, var(--panel-muted) 45%, transparent); }
-    .directory summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: .75rem;
-      padding: .42rem .55rem;
-      cursor: pointer;
-      color: var(--text);
-      font-weight: 650;
-      list-style-position: outside;
-    }
-    .directory summary small, .doc-link small { color: var(--muted); font-size: .72rem; font-weight: 400; }
-    .tree-children { display: grid; gap: .1rem; padding: 0 0 .3rem .65rem; }
-    .doc-link {
+      z-index: 10;
       display: grid;
-      gap: .05rem;
-      padding: .45rem .55rem;
-      border-left: 2px solid transparent;
-      border-radius: .35rem;
-      color: var(--text);
-      text-decoration: none;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 2rem;
+      min-height: 76px;
+      padding: 0 2rem;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
+      backdrop-filter: blur(18px);
     }
-    .doc-link:hover { background: var(--panel-muted); }
+    .brand { display: inline-flex; align-items: center; gap: .65rem; color: var(--text); font-size: 1.08rem; font-weight: 800; letter-spacing: -.035em; text-decoration: none; }
+    .brand-mark { display: grid; width: 1.65rem; height: 1.65rem; place-items: center; border-radius: .45rem; background: var(--accent); color: #03120f; font-size: .9rem; font-weight: 950; box-shadow: 0 0 24px rgb(22 217 160 / 28%); }
+    .brand-badge { padding: .18rem .42rem; border: 1px solid var(--border-bright); border-radius: .3rem; color: var(--accent); font-size: .65rem; font-weight: 800; letter-spacing: .08em; }
+    .top-nav { display: flex; align-items: center; gap: 1.75rem; height: 100%; }
+    .top-nav a { position: relative; display: grid; height: 100%; place-items: center; color: var(--muted-bright); font-weight: 650; text-decoration: none; }
+    .top-nav a:hover, .top-nav a.is-active { color: var(--accent); }
+    .top-nav a.is-active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--accent); content: ""; }
+    .top-actions { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; }
+    .icon-button { display: grid; width: 2rem; height: 2rem; place-items: center; border: 0; border-radius: .5rem; background: transparent; color: var(--muted-bright); cursor: pointer; }
+    .icon-button:hover { background: var(--surface-hover); color: var(--text); }
+    .repo-link { display: inline-flex; align-items: center; gap: .45rem; color: var(--muted-bright); font-size: .86rem; text-decoration: none; }
+    .repo-link:hover { color: var(--text); }
+    .section-bar { overflow-x: auto; border-bottom: 1px solid var(--border); background: var(--surface); scrollbar-width: thin; }
+    .section-nav { display: flex; min-width: max-content; align-items: center; gap: .35rem; padding: .7rem 2rem; }
+    .section-link { padding: .42rem .8rem; border: 0; border-radius: .45rem; background: transparent; color: var(--muted); cursor: pointer; font-size: .88rem; font-weight: 650; white-space: nowrap; }
+    .section-link:hover { background: var(--surface-hover); color: var(--text); }
+    .section-link.is-active { background: var(--accent-soft); color: var(--accent); }
+    .layout { display: grid; grid-template-columns: 294px minmax(0, 1fr); min-height: calc(100vh - 125px); }
+    .sidebar { position: sticky; top: 125px; align-self: start; height: calc(100vh - 125px); overflow: auto; padding: 2rem 1rem 2rem 1.25rem; border-right: 1px solid var(--border); background: var(--surface); }
+    .sidebar-header { padding: 0 .45rem 1.15rem; }
+    .eyebrow { margin-bottom: .7rem; color: var(--accent); font-size: .68rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .sidebar-header h1 { margin: 0 0 .2rem; font-size: 1.15rem; letter-spacing: -.025em; }
+    .sidebar-header p { margin: 0; color: var(--muted); font-size: .8rem; }
+    .search-wrap { position: relative; display: block; margin: 1.15rem 0 .8rem; }
+    .search-icon { position: absolute; top: .6rem; left: .75rem; color: var(--muted); pointer-events: none; }
+    .search { width: 100%; padding: .62rem .7rem .62rem 2.1rem; border: 1px solid var(--border-bright); border-radius: .5rem; outline: 0; background: var(--bg); color: var(--text); font-size: .86rem; }
+    .search::placeholder { color: var(--muted); }
+    .search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgb(22 217 160 / 12%); }
+    .tree { display: grid; gap: .15rem; }
+    .directory { border-radius: .45rem; }
+    .directory[hidden] { display: none; }
+    .directory[open] { background: color-mix(in srgb, var(--surface-hover) 42%, transparent); }
+    .directory summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .48rem .55rem; cursor: pointer; color: var(--muted-bright); font-size: .88rem; font-weight: 700; list-style-position: outside; }
+    .directory summary:hover { color: var(--text); }
+    .directory summary small, .doc-link small { color: var(--muted); font-size: .69rem; font-weight: 500; }
+    .tree-children { display: grid; gap: .08rem; padding: 0 0 .35rem .6rem; }
+    .doc-link { display: grid; gap: .03rem; padding: .48rem .55rem; border-left: 2px solid transparent; border-radius: .35rem; color: var(--muted-bright); text-decoration: none; }
+    .doc-link:hover { background: var(--surface-hover); color: var(--text); }
     .doc-link[hidden] { display: none; }
     .doc-link[aria-current="page"] { border-left-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-    .reader { min-width: 0; padding: clamp(1.25rem, 4vw, 4rem); }
-    .reader-inner { width: min(900px, 100%); margin: 0 auto; }
-    .welcome, .document { padding: clamp(1.25rem, 4vw, 3rem); border: 1px solid var(--border); border-radius: 1rem; background: var(--panel); box-shadow: var(--shadow); }
-    .welcome h1 { margin-top: 0; font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -.04em; }
-    .welcome p { color: var(--muted); }
-    .stats { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.4rem; }
-    .stat { padding: .55rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel-muted); }
-    .stat strong { display: block; font-size: 1.1rem; }
-    .stat span { color: var(--muted); font-size: .78rem; }
-    .document[hidden], .welcome[hidden] { display: none; }
-    .document-header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
-    .document-header h1 { margin: 0 0 .35rem; line-height: 1.2; letter-spacing: -.035em; }
-    .document-path { color: var(--muted); font: .78rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
-    .markdown-body { overflow-wrap: anywhere; }
-    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { line-height: 1.25; margin: 1.7em 0 .55em; }
+    .sidebar-footer { margin: 1.6rem .45rem 0; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .72rem; }
+    .reader { min-width: 0; padding: clamp(2.5rem, 5vw, 5.5rem) clamp(1.25rem, 5vw, 5rem) 6rem; }
+    .reader-layout { display: grid; grid-template-columns: minmax(0, 840px) 170px; gap: clamp(2rem, 5vw, 5rem); justify-content: center; }
+    .reader-inner { min-width: 0; }
+    .welcome { max-width: 800px; padding: 2.5rem 0 4rem; }
+    .welcome h1 { max-width: 740px; margin: 0 0 1.2rem; font-size: clamp(2.5rem, 5vw, 4.8rem); line-height: 1.02; letter-spacing: -.065em; }
+    .welcome p { max-width: 620px; margin: 0; color: var(--muted-bright); font-size: 1.08rem; }
+    .stats { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 2rem; }
+    .stat { min-width: 120px; padding: .75rem .9rem; border: 1px solid var(--border); border-radius: .55rem; background: var(--surface); }
+    .stat strong { display: block; font-size: 1.2rem; }
+    .stat span { color: var(--muted); font-size: .74rem; }
+    .document[hidden], .welcome[hidden], .page-rail[hidden] { display: none; }
+    .document { max-width: 840px; }
+    .document-header { margin-bottom: 2.5rem; padding-bottom: 1.3rem; border-bottom: 1px solid var(--border); }
+    .document-header h1 { margin: 0 0 .55rem; font-size: clamp(2.2rem, 4vw, 3.6rem); line-height: 1.08; letter-spacing: -.06em; }
+    .document-path { color: var(--muted); font: .74rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .markdown-body { overflow-wrap: anywhere; color: var(--muted-bright); font-size: 1.02rem; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { color: var(--text); line-height: 1.25; margin: 2.1em 0 .65em; scroll-margin-top: 150px; }
     .markdown-body h1 { font-size: 2em; margin-top: 0; }
-    .markdown-body h2 { font-size: 1.5em; padding-bottom: .25em; border-bottom: 1px solid var(--border); }
+    .markdown-body h2 { padding-bottom: .35em; border-bottom: 1px solid var(--border); font-size: 1.55em; letter-spacing: -.035em; }
     .markdown-body h3 { font-size: 1.2em; }
+    .markdown-body a { color: var(--link); }
     .markdown-body img { max-width: 100%; height: auto; border-radius: .45rem; }
-    .markdown-body pre { overflow: auto; padding: 1rem; border-radius: .6rem; background: var(--code); color: #e7edf8; }
-    .markdown-body code { padding: .12em .3em; border-radius: .25rem; background: var(--panel-muted); font-size: .9em; }
+    .markdown-body pre { overflow: auto; padding: 1rem 1.1rem; border: 1px solid var(--border); border-radius: .55rem; background: var(--code); color: #e7edf8; }
+    .markdown-body code { padding: .12em .3em; border-radius: .25rem; background: var(--surface-raised); color: #d7e2ff; font-size: .88em; }
     .markdown-body pre code { padding: 0; background: transparent; }
-    .markdown-body blockquote { margin-left: 0; padding: .2rem 1rem; border-left: 4px solid var(--accent); color: var(--muted); background: var(--panel-muted); }
+    .markdown-body blockquote { margin-left: 0; padding: .2rem 1rem; border-left: 3px solid var(--accent); color: var(--muted); background: var(--surface); }
     .markdown-body table { display: block; max-width: 100%; overflow: auto; border-collapse: collapse; }
-    .markdown-body th, .markdown-body td { padding: .45rem .65rem; border: 1px solid var(--border); text-align: left; }
-    .markdown-body th { background: var(--panel-muted); }
-    .status { min-height: 1.5rem; margin: .75rem 0; color: var(--muted); font-size: .85rem; }
-    .status.error { color: #d04a4a; }
+    .markdown-body th, .markdown-body td { padding: .5rem .7rem; border: 1px solid var(--border); text-align: left; }
+    .markdown-body th { background: var(--surface-raised); color: var(--text); }
+    .page-rail { position: sticky; top: 165px; align-self: start; padding-top: 1rem; }
+    .toc-label { margin-bottom: .8rem; color: var(--text); font-size: .78rem; font-weight: 750; }
+    .toc-nav { display: grid; gap: .45rem; border-left: 1px solid var(--border-bright); }
+    .toc-link { display: block; padding-left: .85rem; color: var(--muted); font-size: .76rem; line-height: 1.35; text-decoration: none; }
+    .toc-link:hover, .toc-link.is-active { color: var(--accent); }
+    .toc-link.level-3 { padding-left: 1.4rem; color: var(--muted); font-size: .72rem; }
+    .status { min-height: 1.5rem; margin: 1rem 0 0; color: var(--muted); font-size: .76rem; }
+    .status.error { color: #ff7d86; }
     .skip-link { position: absolute; left: -9999px; }
-    .skip-link:focus { left: 1rem; top: 1rem; z-index: 10; padding: .5rem; background: var(--panel); }
+    .skip-link:focus { left: 1rem; top: 1rem; z-index: 20; padding: .5rem; background: var(--surface); }
+    @media (max-width: 1100px) { .reader-layout { grid-template-columns: minmax(0, 840px); } .page-rail { display: none; } }
     @media (max-width: 760px) {
-      .topbar { position: static; }
+      .topbar { position: static; grid-template-columns: 1fr auto; min-height: 68px; padding: 0 1rem; }
+      .top-nav { display: none; }
+      .section-nav { padding: .6rem 1rem; }
       .layout { display: block; }
-      .sidebar { position: static; height: auto; max-height: 52vh; border-right: 0; border-bottom: 1px solid var(--border); }
-      .reader { padding: 1rem; }
+      .sidebar { position: static; height: auto; max-height: 52vh; border-right: 0; border-bottom: 1px solid var(--border); padding: 1.4rem .8rem; }
+      .reader { padding: 2rem 1rem 4rem; }
+      .welcome { padding-top: 1rem; }
     }
   </style>
 </head>
 <body>
   <a class="skip-link" href="#reader">Skip to document</a>
   <header class="topbar">
-    <a class="brand" href="./">Developer Notes</a>
-    <a class="repo-link" href="https://github.com/Sourav9063/notes">View repository</a>
+    <a class="brand" href="./"><span class="brand-mark">N</span><span>Developer Notes</span><span class="brand-badge">INDEX</span></a>
+    <nav class="top-nav" aria-label="Primary navigation">
+      <a class="is-active" href="./">Browse</a>
+      <a href="https://github.com/Sourav9063/notes">Repository</a>
+    </nav>
+    <div class="top-actions">
+      <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">◐</button>
+      <a class="repo-link" href="https://github.com/Sourav9063/notes">GitHub ↗</a>
+    </div>
   </header>
+  <nav class="section-bar" aria-label="Top-level sections"><div class="section-nav" id="section-nav">__SECTIONS__</div></nav>
   <div class="layout">
     <aside class="sidebar" aria-label="Markdown documents">
       <div class="sidebar-header">
+        <div class="eyebrow">Knowledge base</div>
         <h1>All notes</h1>
-        <p>Search by title or path.</p>
-        <label>
+        <p>Search the complete Markdown archive.</p>
+        <label class="search-wrap">
           <span class="sr-only">Search notes</span>
+          <span class="search-icon" aria-hidden="true">⌕</span>
           <input class="search" id="search" type="search" placeholder="Filter documents…" autocomplete="off">
         </label>
       </div>
       <nav class="tree" id="tree" aria-label="Markdown documents">__TREE__</nav>
+      <div class="sidebar-footer">Synced automatically<br>with GitHub Actions</div>
     </aside>
     <main class="reader" id="reader">
-      <div class="reader-inner">
-        <section class="welcome" id="welcome">
-          <h1>A living index of the notes</h1>
-          <p>Select a document from the sidebar. The Markdown stays in the repository and is rendered here when opened.</p>
-          <div class="stats">
-            <div class="stat"><strong>__DOC_COUNT__</strong><span>Markdown files</span></div>
-            <div class="stat"><strong>__DIR_COUNT__</strong><span>directories</span></div>
-          </div>
-        </section>
-        <article class="document" id="document" hidden>
-          <header class="document-header">
-            <h1 id="document-title"></h1>
-            <div class="document-path" id="document-path"></div>
-          </header>
-          <div class="markdown-body" id="content"></div>
-        </article>
-        <p class="status" id="status" role="status" aria-live="polite"></p>
+      <div class="reader-layout">
+        <div class="reader-inner">
+          <section class="welcome" id="welcome">
+            <div class="eyebrow">Developer knowledge base</div>
+            <h1>Notes for building better things.</h1>
+            <p>A living index of practical guides, references, experiments, and patterns. Choose a document to start reading.</p>
+            <div class="stats">
+              <div class="stat"><strong>__DOC_COUNT__</strong><span>Markdown files</span></div>
+              <div class="stat"><strong>__DIR_COUNT__</strong><span>directories</span></div>
+            </div>
+          </section>
+          <article class="document" id="document" hidden>
+            <header class="document-header">
+              <h1 id="document-title"></h1>
+              <div class="document-path" id="document-path"></div>
+            </header>
+            <div class="markdown-body" id="content"></div>
+          </article>
+          <p class="status" id="status" role="status" aria-live="polite"></p>
+        </div>
+        <aside class="page-rail" id="page-rail" aria-label="On this page" hidden>
+          <div class="toc-label">On this page</div>
+          <nav class="toc-nav" id="toc-nav"></nav>
+        </aside>
       </div>
     </main>
   </div>
@@ -347,14 +393,19 @@ def render_html(catalog: list[dict[str, str]]) -> str:
     const documents = __CATALOG__;
     const documentByPath = new Map(documents.map((item) => [item.path, item]));
     const tree = document.querySelector('#tree');
+    const sectionNav = document.querySelector('#section-nav');
     const search = document.querySelector('#search');
     const welcome = document.querySelector('#welcome');
     const documentView = document.querySelector('#document');
     const documentTitle = document.querySelector('#document-title');
     const documentPath = document.querySelector('#document-path');
     const content = document.querySelector('#content');
+    const pageRail = document.querySelector('#page-rail');
+    const tocNav = document.querySelector('#toc-nav');
     const status = document.querySelector('#status');
+    const themeToggle = document.querySelector('#theme-toggle');
     let loadId = 0;
+    let activeSection = 'all';
 
     function encodePath(path) {
       return path.split('/').map((part) => encodeURIComponent(part)).join('/');
@@ -372,9 +423,39 @@ def render_html(catalog: list[dict[str, str]]) -> str:
     function setActive(path) {
       tree.querySelectorAll('.doc-link').forEach((link) => {
         const active = link.dataset.docPath === path;
-        link.toggleAttribute('aria-current', active);
         if (active) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
       });
+    }
+
+    function slugForHeading(text, usedIds) {
+      const base = text.toLocaleLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-') || 'section';
+      const count = usedIds.get(base) || 0;
+      usedIds.set(base, count + 1);
+      return count ? `${base}-${count + 1}` : base;
+    }
+
+    function buildTableOfContents() {
+      tocNav.replaceChildren();
+      const usedIds = new Map();
+      const headings = [...content.querySelectorAll('h2, h3')];
+      headings.forEach((heading) => {
+        const id = slugForHeading(heading.textContent, usedIds);
+        heading.id = id;
+        const link = document.createElement('a');
+        link.className = `toc-link level-${heading.tagName.slice(1)}`;
+        link.href = `#${id}`;
+        link.textContent = heading.textContent;
+        tocNav.append(link);
+      });
+      pageRail.hidden = headings.length === 0;
+    }
+
+    function scrollToHash() {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      if (!id) return;
+      const target = document.getElementById(id);
+      if (target) requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     }
 
     function resolveRelativeUrl(value, sourcePath) {
@@ -419,6 +500,7 @@ def render_html(catalog: list[dict[str, str]]) -> str:
       const currentLoadId = ++loadId;
       welcome.hidden = true;
       documentView.hidden = false;
+      pageRail.hidden = true;
       documentTitle.textContent = item.title;
       documentPath.textContent = item.path;
       content.textContent = 'Loading…';
@@ -435,20 +517,31 @@ def render_html(catalog: list[dict[str, str]]) -> str:
         if (!window.marked || !window.DOMPurify) throw new Error('Markdown renderer unavailable');
         const rendered = window.marked.parse(markdown, { gfm: true, breaks: false });
         content.innerHTML = window.DOMPurify.sanitize(rendered);
+        const firstHeading = content.querySelector('h1');
+        if (firstHeading && firstHeading.textContent.trim() === item.title.trim()) firstHeading.remove();
         rewriteRelativeUrls(content, item.path);
+        buildTableOfContents();
+        scrollToHash();
         setStatus(item.path);
       } catch (error) {
         if (currentLoadId !== loadId) return;
         content.textContent = 'Unable to load this document.';
+        pageRail.hidden = true;
         setStatus(`${item.path}: ${error.message}`, true);
       }
+    }
+
+    function matchesSection(path) {
+      if (activeSection === 'all') return true;
+      if (activeSection === '__root__') return !path.includes('/');
+      return path.startsWith(`${activeSection}/`);
     }
 
     function filterTree() {
       const query = search.value.trim().toLocaleLowerCase();
       tree.querySelectorAll('.doc-link').forEach((link) => {
         const item = documentByPath.get(link.dataset.docPath);
-        const visible = !query || `${item.title} ${item.path}`.toLocaleLowerCase().includes(query);
+        const visible = matchesSection(item.path) && (!query || `${item.title} ${item.path}`.toLocaleLowerCase().includes(query));
         link.hidden = !visible;
       });
       tree.querySelectorAll('[data-directory]').forEach((directory) => {
@@ -457,6 +550,32 @@ def render_html(catalog: list[dict[str, str]]) -> str:
         if (query && hasVisibleDocument) directory.open = true;
       });
     }
+
+    sectionNav.addEventListener('click', (event) => {
+      const button = event.target.closest('.section-link');
+      if (!button) return;
+      activeSection = button.dataset.section;
+      sectionNav.querySelectorAll('.section-link').forEach((item) => item.classList.toggle('is-active', item === button));
+      filterTree();
+    });
+
+    tocNav.addEventListener('click', (event) => {
+      const link = event.target.closest('.toc-link');
+      if (!link) return;
+      event.preventDefault();
+      const target = document.getElementById(link.hash.slice(1));
+      if (!target) return;
+      const url = new URL(window.location.href);
+      url.hash = link.hash;
+      history.pushState({ path: url.searchParams.get('file'), hash: url.hash }, '', url);
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    themeToggle.addEventListener('click', () => {
+      const nextTheme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      document.documentElement.dataset.theme = nextTheme;
+      themeToggle.setAttribute('aria-label', `Switch to ${nextTheme === 'light' ? 'dark' : 'light'} theme`);
+    });
 
     tree.addEventListener('click', (event) => {
       const link = event.target.closest('.doc-link');
@@ -471,6 +590,7 @@ def render_html(catalog: list[dict[str, str]]) -> str:
       else {
         welcome.hidden = false;
         documentView.hidden = true;
+        pageRail.hidden = true;
         document.title = 'Developer Notes';
         setActive('');
         setStatus('');
@@ -478,6 +598,7 @@ def render_html(catalog: list[dict[str, str]]) -> str:
     });
 
     const initialPath = new URLSearchParams(window.location.search).get('file');
+    filterTree();
     if (initialPath) selectDocument(initialPath, false);
   </script>
 </body>
@@ -485,6 +606,7 @@ def render_html(catalog: list[dict[str, str]]) -> str:
 '''
     return (
         template.replace("__TREE__", tree)
+        .replace("__SECTIONS__", sections)
         .replace("__DOC_COUNT__", str(len(catalog)))
         .replace("__DIR_COUNT__", str(directory_count(catalog)))
         .replace("__CATALOG__", safe_json(catalog))
