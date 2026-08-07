@@ -44,7 +44,7 @@ You simply output the state. CSS handles the logic.
 
 ## 2. How to Implement in React with Tailwind CSS
 
-This is the specific syntax you saw in the codebase (`data-[state=open]:...`).
+This is the Tailwind CSS v4 syntax you saw in the codebase (`data-[state=open]:...`). Data attribute variants work without a JavaScript config entry.
 
 ### Step 1: Set the Attribute in Component
 Pass the boolean state as a string value to a custom `data-` attribute.
@@ -59,7 +59,7 @@ export function AccordionItem() {
     <div 
       // Define your custom attribute
       data-state={isOpen ? 'open' : 'closed'} 
-      className="p-4 border rounded"
+      className="border border-gray-200 rounded p-4"
     >
       <button onClick={() => setIsOpen(!isOpen)}>
         Toggle

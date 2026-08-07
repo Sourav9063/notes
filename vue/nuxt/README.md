@@ -1,4 +1,3 @@
-```markdown
 # Nuxt 3 Comprehensive API Cheatsheet
 
 ---
@@ -384,9 +383,27 @@ export const useSocket = () => {
 ```
 
 ### Tailwind Integration
+Tailwind CSS v4 uses the official Vite plugin and CSS import. This avoids the v3 `@tailwind` directives and JavaScript config setup.
+
+```bash
+npm install tailwindcss @tailwindcss/vite
+```
+
 ```typescript
 // nuxt.config.ts
-modules: ['@nuxtjs/tailwindcss']
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineNuxtConfig({
+  css: ['~/assets/css/main.css'],
+  vite: {
+    plugins: [tailwindcss()],
+  },
+})
+```
+
+```css
+/* assets/css/main.css */
+@import "tailwindcss";
 ```
 
 ---
