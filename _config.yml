@@ -1,0 +1,4 @@
+exclude:
+  - AGENTS.md
+  - React/AGENTS.md
+  - ai/AGENTS.md
