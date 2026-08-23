@@ -71,12 +71,29 @@ export function useQueryState<T extends string = string>(
 
   // Sync optimistic state back to URL value once navigation settles
   const urlValue = (searchParams.get(key) as T) ?? defaultValue;
+
+  // Last value this hook wrote to the URL. While a write is in flight the URL
+  // can briefly report an older value (writes are batched on a timeout), so the
+  // optimistic value must survive until our own write lands - otherwise fast
+  // typing gets clobbered by a stale URL value and characters are dropped.
+  const pendingValue = React.useRef<T | undefined>(undefined);
   const previousUrlValue = React.useRef(urlValue);
   React.useEffect(() => {
-    if (previousUrlValue.current !== urlValue) {
-      previousUrlValue.current = urlValue;
-      setOptimisticValue(undefined);
+    if (previousUrlValue.current === urlValue) {
+      return;
     }
+    previousUrlValue.current = urlValue;
+
+    if (
+      pendingValue.current !== undefined &&
+      pendingValue.current !== urlValue
+    ) {
+      // A newer write of ours is still in flight, this is an intermediate value
+      return;
+    }
+
+    pendingValue.current = undefined;
+    setOptimisticValue(undefined);
   }, [urlValue]);
 
   const value =
@@ -89,7 +106,18 @@ export function useQueryState<T extends string = string>(
    */
   const setValue = React.useCallback(
     (newValue: T | null) => {
-      setOptimisticValue(newValue);
+      const nextValue =
+        newValue === null || newValue === "" ? defaultValue : newValue;
+
+      if (nextValue === urlValue) {
+        // URL will not change, so the sync effect never runs - settle now
+        pendingValue.current = undefined;
+        setOptimisticValue(undefined);
+      } else {
+        pendingValue.current = nextValue;
+        setOptimisticValue(newValue);
+      }
+
       if (!batchedParams) {
         const currentSearch =
           typeof window !== "undefined"
@@ -136,7 +164,7 @@ export function useQueryState<T extends string = string>(
         }
       }, 0);
     },
-    [key, pathname, router, searchParams, options],
+    [key, defaultValue, urlValue, pathname, router, searchParams, options],
   );
 
   return [value, setValue];
