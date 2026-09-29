@@ -1,3 +1,5 @@
+# `x.(type)` and type assertions in Go
+
 In Go, `sth.(type)` and `type()` are not directly comparable constructs, as `type()` is not a valid Go syntax for type checking or conversion. It seems there might be a misunderstanding or a typo in `type()`.
 
 Let's break down `sth.(type)` and discuss what you might be intending with `type()`.

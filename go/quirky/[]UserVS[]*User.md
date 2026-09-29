@@ -1,3 +1,5 @@
+# `[]User` vs `[]*User` in Go
+
 In Go, `[]User` and `[]*User` both represent slices, but they differ fundamentally in what they store: **values of `User` structs** versus **pointers to `User` structs**. This difference has significant implications for memory usage, mutability, and how you interact with the elements.
 
 Let's assume we have a `User` struct defined like this:
@@ -100,6 +102,34 @@ type User struct {
       * When you need to modify the original struct instances, and those modifications should be reflected everywhere that references them.
       * When dealing with polymorphic behavior (e.g., slices of interfaces, where the underlying concrete types are often stored as pointers).
       * When you might have `nil` elements (a pointer can be `nil`, indicating no `User` struct is referenced at that position).
+
+-----
+
+### `range` gotchas
+
+```go
+users := []User{{ID: 1, Name: "Alice", Age: 30}, {ID: 2, Name: "Bob", Age: 25}}
+
+for _, u := range users {
+	u.Age++ // u is a copy: no effect on the slice
+}
+fmt.Println(users[0].Age) // 30
+
+for i := range users {
+	users[i].Age++ // modifies the element in place
+}
+fmt.Println(users[0].Age) // 31
+
+var ptrs []*User
+for _, u := range users {
+	ptrs = append(ptrs, &u) // Go 1.22+: new u per iteration; before 1.22 every pointer aliased one variable
+}
+fmt.Println(ptrs[0].Name, ptrs[1].Name) // Alice Bob
+ptrs[0].Age = 99
+fmt.Println(users[0].Age) // 31: &u points to a copy, not users[0]
+```
+
+Use `&users[i]` (index loop) to get a pointer to the element itself.
 
 -----
 

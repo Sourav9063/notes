@@ -1,3 +1,5 @@
+# Type conversion in Go
+
 Type conversion in Go (Golang) is the process of converting a value of one data type into a value of another data type. Unlike some other languages, Go is very strict about type safety, so explicit conversions are often required even for types that seem compatible. Implicit conversions are very rare and generally only occur in specific, well-defined scenarios (like assigning an untyped constant to a variable).
 
 Here's a breakdown of how type conversion works in Go, along with common scenarios and examples:
