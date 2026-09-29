@@ -15,7 +15,7 @@ Audit every note, fix technically wrong content, merge duplicate notes into the 
 - `javascript/33-js-concepts` stays a snapshot of the reading-list README: upstream became a docs site (`docs/*.mdx`, tests, tooling) at `16d0d95`; README notes the move.
 - `vim/vscode-vim-roadmap.md` is kept as an archive: upstream deleted `ROADMAP.md` in `17e5fd71` (2025-05-22).
 - Interview banks, Tailwind READMEs, and `SQL/PostgreSQL.md` vs `SQL/GOD_PostgreSQL.md` are complementary, not duplicates.
-- Code files (`.js`, `.ts`, `.go`, etc.) are not edited; fixes go in the Markdown notes.
+- Code files (`.js`, `.ts`, `.go`, etc.) were not edited during the audit; a later user-requested pass fixed them directly.
 - Agent guidance, skills, Claude settings, and AI workflow notes live in https://github.com/Sourav9063/ADD. `ai/` keeps only a README linking there; `.agent/` removed. Root `AGENTS.md` stays: it governs this repo.
 
 ## Upstream sources
