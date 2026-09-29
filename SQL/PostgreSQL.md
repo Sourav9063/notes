@@ -18,7 +18,8 @@
 | `\d table_name`      | Describe table                | Columns, types, defaults, indexes, foreign keys, triggers             |
 | `\d+ table_name`     | Describe table (verbose)      | Also shows storage size and comments                                  |
 | `\di`                | List indexes                  | Shows all indexes in the current schema                               |
-| `\df`                | List functions                | Shows stored functions/procedures                                     |
+| `\df`                | List functions                | Shows stored functions/procedures; `\df string*` filters by name      |
+| `\do`                | List operators                | Shows operators and their argument types                              |
 | `\dv`                | List views                    | Shows views in current schema                                         |
 | `\x`                 | Toggle expanded display       | Rotates wide rows vertically — essential for wide tables              |
 | `\timing`            | Toggle query timing           | Prints milliseconds after every query                                 |
@@ -481,7 +482,7 @@ TRUNCATE TABLE sessions CASCADE;          -- also truncates dependent tables
 
 ### Aggregate Filter: `COUNT(*) FILTER (WHERE ...)`
 
-Computes multiple conditional counts in a single scan — far more efficient than multiple subqueries or `CASE WHEN` inside `SUM`.
+Computes multiple conditional counts in a single scan — far cheaper than multiple subqueries, and clearer than `SUM(CASE WHEN ... THEN 1 ELSE 0 END)` (same performance).
 
 ```sql
 -- One scan, six counters:
@@ -502,6 +503,18 @@ SELECT
     department,
     AVG(salary) FILTER (WHERE active = true)  AS avg_active_salary,
     SUM(bonus)  FILTER (WHERE year = 2025)    AS bonus_2025
+FROM employees
+GROUP BY department;
+```
+
+### Collecting Values: `STRING_AGG` / `ARRAY_AGG`
+
+```sql
+-- One row per department with its employees as a comma-separated string / array
+SELECT
+    department,
+    STRING_AGG(employee_name, ', ' ORDER BY employee_name) AS names,
+    ARRAY_AGG(employee_id ORDER BY employee_id)            AS ids
 FROM employees
 GROUP BY department;
 ```
@@ -635,6 +648,33 @@ FROM employees;
 - `PARTITION BY` — resets the window for each group (like `GROUP BY` but keeps all rows)
 - `ORDER BY` inside `OVER` — defines row order within the window (not the final output order)
 - `ROWS BETWEEN` — controls the frame: which rows in the partition are included in the calculation
+- Default frame with `ORDER BY` is `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`, so `SUM(...) OVER (ORDER BY ...)` is already a running total, and rows with equal sort keys (peers) are included together
+
+**More window functions:**
+
+```sql
+SELECT
+    employee_name,
+    salary,
+    NTILE(4)       OVER (ORDER BY salary) AS quartile,     -- split into 4 buckets
+    PERCENT_RANK() OVER (ORDER BY salary) AS pct_rank,     -- (rank - 1) / (rows - 1), 0 to 1
+    CUME_DIST()    OVER (ORDER BY salary) AS cume_dist,    -- fraction of rows <= current, (0, 1]
+
+    -- LAST_VALUE gotcha: the default frame ends at the current row,
+    -- so extend it to see the real last row of the partition
+    LAST_VALUE(salary) OVER (
+        ORDER BY salary
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+    ) AS highest_salary
+FROM employees;
+```
+
+| If you want to... | Use |
+| --- | --- |
+| Compare to the previous row (day-over-day) | `LAG()` |
+| Top N per group | `ROW_NUMBER()` (exactly N) or `DENSE_RANK()` (keep ties) |
+| Running total | `SUM(...) OVER (ORDER BY ...)` |
+| N-row rolling average | `AVG(...) OVER (ORDER BY ... ROWS BETWEEN N-1 PRECEDING AND CURRENT ROW)` |
 
 **Use case — deduplicate keeping latest:**
 
@@ -736,7 +776,8 @@ SELECT RTRIM('  hello  ');          -- '  hello'
 SELECT TRIM(BOTH 'x' FROM 'xxhixx');-- 'hi'
 
 SELECT LENGTH('hello');             -- 5
-SELECT CHAR_LENGTH('hello');        -- 5 (same, but counts Unicode characters)
+SELECT CHAR_LENGTH('hello');        -- 5 (same as LENGTH: counts characters)
+SELECT OCTET_LENGTH('héllo');       -- 6 (bytes in UTF-8)
 
 SELECT POSITION('lo' IN 'hello');   -- 4 (1-indexed)
 SELECT STRPOS('hello', 'lo');       -- 4 (same)
@@ -744,6 +785,9 @@ SELECT STRPOS('hello', 'lo');       -- 4 (same)
 SELECT SUBSTRING('hello' FROM 2 FOR 3); -- 'ell'
 SELECT LEFT('hello', 3);               -- 'hel'
 SELECT RIGHT('hello', 3);              -- 'llo'
+
+SELECT STARTS_WITH('PostgreSQL', 'Post'); -- true (also: 'PostgreSQL' ^@ 'Post')
+-- No ENDS_WITH function: use RIGHT(s, LENGTH(suffix)) = suffix or s LIKE '%SQL'
 ```
 
 ### Replace and Format
@@ -770,11 +814,11 @@ SELECT FORMAT('INSERT INTO %I VALUES (%L)', 'users', 'O''Brien'); -- safe quotin
 | `\|/`    | Square root    | `\|/25.0` → `5`      |
 | `\|\|/`  | Cube root      | `\|\|/27.0` → `3`    |
 | `@`      | Absolute value | `@ -5` → `5`         |
-| `!`      | Factorial      | `5!` → `120`         |
+| `factorial()` | Factorial | `factorial(5)` → `120` (postfix `5!` removed in PG 14) |
 
 ```sql
 -- Population density
-SELECT name, country, |/population/area AS density FROM cities;
+SELECT name, country, population / area AS density FROM cities;
 
 -- Rounding
 SELECT ROUND(3.14159, 2);   -- 3.14
@@ -1671,8 +1715,12 @@ CREATE INDEX idx_name_trgm ON cities USING GIN (name gin_trgm_ops);
 A middle ground between `LIKE` and POSIX regex. Uses `|` for alternation, `*` and `+` for repetition, `()` for grouping. Rarely worth using — POSIX regex is more powerful and more portable.
 
 ```sql
-SELECT 'abc' SIMILAR TO '(b|c)%';    -- FALSE
+SELECT 'abc' SIMILAR TO '(b|c)%';    -- FALSE (pattern must match the whole string)
 SELECT 'abc' SIMILAR TO '%(b|d)%';   -- TRUE
+SELECT 'abcde' SIMILAR TO 'a%c_e';   -- TRUE (% and _ work like LIKE; . is a literal)
+
+-- SUBSTRING with a SIMILAR pattern: #" marks the part to return
+SELECT SUBSTRING('ABCDE' SIMILAR '%#"B_D#"_' ESCAPE '#');  -- 'BCD'
 ```
 
 ### POSIX Regular Expressions — The Powerful One
@@ -1699,6 +1747,13 @@ SELECT * FROM imports WHERE raw_value ~ '^-?[0-9]+$';
 -- Negation — non-matching:
 SELECT * FROM users WHERE email !~ '@';   -- emails without @
 ```
+
+**Postgres regex differences from Perl/JS:**
+
+- `.` matches newline by default; the `n` flag makes `.`, `[^...]`, `^`, and `$` newline-sensitive.
+- Word boundaries are `\m` (start of word), `\M` (end of word), `\y` (either), `\Y` (not a boundary). `\b` means backspace, not a word boundary.
+- POSIX classes go inside a bracket expression: `[[:alpha:]]`, `[[:digit:]]`, `[[:space:]]`. Shorthands `\d`, `\s`, `\w` also work.
+- Flags (last argument of regex functions): `i` case-insensitive, `g` all matches (`REGEXP_MATCHES` / `REGEXP_REPLACE` only), `n` newline-sensitive, `x` expanded syntax (ignore whitespace and `#` comments).
 
 ### Regex Functions
 
@@ -1733,6 +1788,11 @@ SELECT REGEXP_SPLIT_TO_ARRAY('one,two,three', ',');
 -- SUBSTRING with regex capture:
 SELECT SUBSTRING('user@pathao.com' FROM '^(.+)@');
 -- 'user'
+
+-- PostgreSQL 15+:
+SELECT REGEXP_COUNT('ababa', 'a');              -- 3
+SELECT REGEXP_SUBSTR('abc 123 def 456', '[0-9]+', 1, 2);  -- '456' (2nd match)
+SELECT REGEXP_LIKE('Hello', '^h', 'i');         -- true (same as ~*)
 ```
 
 ### Practical Example — Extracting Data
@@ -1745,7 +1805,7 @@ FROM logs
 WHERE message ~ 'https?://';
 
 -- Validate phone numbers (Bangladesh format):
-SELECT * FROM users WHERE phone ~ '^\+88017[0-9]{8}$';
+SELECT * FROM users WHERE phone ~ '^\+8801[3-9][0-9]{8}$';
 
 -- Extract the domain from every email:
 SELECT email, REGEXP_REPLACE(email, '^.+@', '') AS domain FROM users;
