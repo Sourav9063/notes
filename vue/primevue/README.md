@@ -2,10 +2,7 @@
 
 [`mytheme.js`](mytheme.js) defines a custom [PrimeVue](https://primevue.org/theming/styled/) preset on top of Aura with `definePreset`. Generated with the PrimeVue theme designer.
 
-Usage notes:
-
-- Import your root component first: `import App from "./App.vue";`.
-- PrimeVue 4.3+ renamed `@primevue/themes` to `@primeuix/themes`; update both imports when upgrading.
+Imports use `@primeuix/themes`, the PrimeVue 4.3+ name of `@primevue/themes`.
 
 ## Alternate light surface palettes
 
