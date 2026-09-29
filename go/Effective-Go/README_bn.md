@@ -1,4 +1,4 @@
-# effective go
+# Effective Go (বাংলা)
 
 - [effective go](#effective-go)
   - [Introduction](#introduction)
