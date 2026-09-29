@@ -1697,7 +1697,7 @@ Enables smooth CSS-powered transitions between page states.
 
 ---
 
-## Section 14: Advanced Go Patterns (Q331–Q355)
+## Section 14: Advanced Go Patterns (Q331–Q345)
 
 ### Q331. Implement a generic repository pattern.
 

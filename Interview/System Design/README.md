@@ -1,4 +1,4 @@
- # Step 1: Fundamentals
+# Step 1: Fundamentals
 
 ## 1. What happens when you type a URL in the browser and press Enter?
 
