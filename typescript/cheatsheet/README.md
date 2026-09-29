@@ -27,6 +27,7 @@ Or run `.ts` files directly:
 
 ```bash
 npx tsx index.ts   # tsx (esbuild-based), no type-check
+npx ts-node index.ts  # ts-node, type-checks (or: npm install -g ts-node)
 node index.ts      # Node.js 22.18+ / 23.6+ strips erasable types natively
 ```
 
@@ -1804,6 +1805,459 @@ When building a library, you need to generate `.d.ts` files. The `--declaration`
   * `--declarationMap`: Generates a `.d.ts.map` file alongside each `.d.ts` file. This map file contains a link back to the original `.ts` source file. This allows you to "Go to Definition" on a type in a library and land on the original source code, not just the `.d.ts` file.
 
 This is an essential flag for making your library's developer experience excellent for other TypeScript users.
+
+---
+
+# 📘 TypeScript Deep Dive (Part 5 – More Examples)
+
+Extra explanations and examples for topics from Parts 1–4.
+
+---
+
+## 68. **Basic Types, `any`, and `unknown`**
+
+  * **Primitive Types**: `string`, `number`, `boolean`, `null`, `undefined`, `symbol`, and `bigint`.
+  * **`any`**: The "escape hatch." Use it when you don't know the type or need to opt-out of type-checking. Use it sparingly!
+  * **`unknown`**: A safer alternative to `any`. You can't perform any operations on an `unknown` variable until you narrow its type.
+
+```typescript
+let myName: string = 'Alex';
+let age: number = 30;
+let isDev: boolean = true;
+let anything: any = 'I can be anything!';
+let unknownValue: unknown = 'I must be checked before use.';
+```
+
+The `unknown` type is particularly useful when dealing with data from external APIs, where the structure is not guaranteed.
+
+---
+
+## 69. **Arrays, Tuples, and Function Parameters**
+
+  * **Arrays**: Declare the type of elements inside the array: `string[]` or `Array<string>`.
+  * **Tuples**: An array with a **fixed number of elements** at specific positions, each with a known type.
+  * **Functions**: Type each parameter and the return value; `?` makes a parameter optional, `=` gives a default, `...` collects rest parameters.
+
+```typescript
+let names: string[] = ['Alice', 'Bob', 'Charlie'];
+
+let user: [number, string, boolean] = [1, 'Alex', true];
+// user = ['Alex', 1, true]; // Error: Incorrect types
+
+function greet(name: string, greeting?: string): string {
+  if (greeting) {
+    return `${greeting}, ${name}!`;
+  }
+  return `Hello, ${name}!`;
+}
+
+function printAllNames(firstName: string, ...restOfNames: string[]) {
+  console.log(firstName, restOfNames);
+}
+```
+
+---
+
+## 70. **Interfaces and Type Aliases in Practice**
+
+  * **Interfaces**: Define the **shape** of an object. They are great for defining public APIs and object contracts. They can be extended and implemented by classes.
+  * **Type Aliases**: Create a new name for a type. They can be used for primitives, unions, tuples, and object shapes. Use them for complex type signatures.
+
+```typescript
+interface User {
+  readonly id: number; // Readonly property
+  name: string;
+  email?: string; // Optional property
+}
+
+type Point = {
+  x: number;
+  y: number;
+};
+
+let user1: User = {
+  id: 1,
+  name: 'Alex',
+};
+
+// user1.id = 2; // Error: Cannot assign to 'id' because it is a read-only property.
+```
+
+| Feature | Interface | Type Alias |
+|---|---|---|
+| **Declaration** | `interface User { ... }` | `type User = { ... };` |
+| **Extending** | Can be extended by other interfaces using `extends`. | Can be extended by other type aliases using `&` (intersection). |
+| **Implementing** | A class can `implement` an interface. | A class can `implement` an object-shaped alias, but **not** a union type. |
+| **Declaration Merging** | Can be declared multiple times, and their members will be merged. | Cannot be declared multiple times. |
+| **Primitives & Unions** | **Cannot** be used for primitive types, union types, or tuples. | **Can** be used for all of these. |
+
+  * **When to use `interface`**: the shape of an object used as a contract for a class, or a type you might extend later via declaration merging (e.g., library augmentation).
+
+```typescript
+// Library A
+interface MyLibraryConfig {
+  theme: string;
+}
+
+// Your application code can augment the library's interface
+interface MyLibraryConfig {
+  darkMode: boolean;
+}
+```
+
+  * **When to use `type`**: unions, intersections, new names for primitives, and tuples.
+
+```typescript
+type ID = string | number;
+type Point = [number, number];
+type Result = 'success' | 'failure';
+```
+
+**Recommendation:** For object shapes, use **interfaces** unless you need a feature only type aliases provide (like unions or mapped types).
+
+---
+
+## 71. **Classes with Access Modifiers**
+
+  * `public`: Accessible from anywhere.
+  * `private`: Accessible only within the class.
+  * `protected`: Accessible within the class and its subclasses.
+
+```typescript
+class Animal {
+  constructor(protected name: string) {}
+
+  public makeSound(sound: string) {
+    console.log(`${this.name} makes a ${sound}`);
+  }
+}
+
+class Dog extends Animal {
+  constructor(name: string, private breed: string) {
+    super(name);
+  }
+  public makeSound(sound: string) {
+    console.log(`${this.name} a ${this.breed} dog, says ${sound}`); // this.name is accessible because it is protected
+  }
+}
+
+let doggo = new Dog('Max', 'Golden Retriever');
+doggo.makeSound('woof');
+// console.log(doggo.name); // Error: Property 'name' is protected
+```
+
+---
+
+## 72. **Union, Intersection, and Custom Type Guards**
+
+  * **Union Types** (`|`): A variable can be **one of several** types.
+  * **Intersection Types** (`&`): A variable must have **all the properties** of multiple types.
+  * **Narrowing**: `typeof` checks primitives, `instanceof` checks class instances, and custom type guards return `param is Type`.
+
+```typescript
+function printId(id: number | string) {
+  console.log('Your ID is: ' + id);
+}
+printId(101); // OK
+printId('202'); // OK
+// printId(true); // Error
+
+interface A { a: string; }
+interface B { b: number; }
+type AB = A & B;
+let intersection: AB = { a: 'hello', b: 42 };
+
+function padLeft(padding: number | string, input: string) {
+  if (typeof padding === 'number') {
+    return ' '.repeat(padding) + input;
+  }
+  return padding + input;
+}
+
+interface Fish { swim(): void; }
+interface Bird { fly(): void; }
+
+function isFish(pet: Fish | Bird): pet is Fish {
+  return (pet as Fish).swim !== undefined;
+}
+
+function move(pet: Fish | Bird) {
+  if (isFish(pet)) {
+    pet.swim();
+  } else {
+    pet.fly();
+  }
+}
+```
+
+---
+
+## 73. **Generic Interfaces**
+
+Generics make types into parameters, which is essential for type-safe data structures like stacks and queues.
+
+```typescript
+function identity<T>(arg: T): T {
+  return arg;
+}
+
+let output1 = identity<string>('myString'); // Explicit type
+let output2 = identity(123); // Type inference
+
+interface GenericIdentityFn<T> {
+  (arg: T): T;
+}
+
+let myIdentity: GenericIdentityFn<number> = identity;
+```
+
+---
+
+## 74. **Mapped Types and Built-in Utilities**
+
+  * `keyof` creates a union of an object's keys; `in` iterates over them.
+  * **`Partial<T>`**: Makes all properties of `T` optional.
+  * **`Readonly<T>`**: Makes all properties of `T` `readonly`.
+  * **`Pick<T, K>`**: Picks a set of properties `K` from `T`.
+  * **`Omit<T, K>`**: Omits a set of properties `K` from `T`.
+  * **`Record<K, T>`**: An object type whose keys are `K` and values are `T`.
+
+```typescript
+// How Readonly is built
+type MyReadonly<T> = {
+  readonly [P in keyof T]: T[P];
+};
+
+interface Todo {
+  title: string;
+  description: string;
+  completed: boolean;
+}
+
+type ReadonlyTodo = MyReadonly<Todo>;
+type PartialTodo = Partial<Todo>;
+// { title?: string; description?: string; completed?: boolean; }
+type TodoPreview = Pick<Todo, 'title' | 'completed'>;
+// { title: string; completed: boolean; }
+type TodoNoDescription = Omit<Todo, 'description'>;
+// { title: string; completed: boolean; }
+type TodoStatus = 'pending' | 'completed';
+type Todos = Record<TodoStatus, Todo[]>;
+// { pending: Todo[]; completed: Todo[]; }
+```
+
+**Use Case:** Flexible function parameters or API payloads, e.g. an update function that takes `Partial<User>`.
+
+---
+
+## 75. **Conditional Types and `infer`**
+
+```typescript
+type IsString<T> = T extends string ? 'yes' : 'no';
+type T1 = IsString<string>; // 'yes'
+type T2 = IsString<number>; // 'no'
+
+// How ReturnType is built
+type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : any;
+
+function greeting(name: string): string {
+  return `Hello, ${name}`;
+}
+
+type GreetingResult = MyReturnType<typeof greeting>; // string
+type NumberResult = MyReturnType<() => number>; // number
+```
+
+`infer R` tells TypeScript to infer the function's return type into a new type variable `R`. If the condition matches, the type becomes `R`; otherwise, `any`. This powers many standard library utility types.
+
+---
+
+## 76. **Enums, Assertions, and Non-null `!`**
+
+```typescript
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right,
+}
+let myDirection: Direction = Direction.Up;
+
+// Type assertion: "trust me, I know better." Use with caution.
+let someValue: unknown = 'this is a string';
+let strLength: number = (someValue as string).length;
+
+// Non-null assertion: only when you are absolutely sure the value is not null/undefined
+function printName(name: string | null) {
+  console.log(name!.toUpperCase());
+}
+```
+
+---
+
+## 77. **Decorators (Legacy `experimentalDecorators`)**
+
+Decorators attach to classes, methods, properties, or parameters for meta-programming, e.g. adding functionality to classes without changing their code. TypeScript 5.0+ supports standard (TC39) decorators by default; frameworks like Angular and NestJS still use the legacy form, enabled with:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true
+  }
+}
+```
+
+```typescript
+function sealed(constructor: Function) {
+  Object.seal(constructor);
+  Object.seal(constructor.prototype);
+}
+
+@sealed
+class Greeter {
+  greeting: string;
+  constructor(message: string) {
+    this.greeting = message;
+  }
+  greet() {
+    return 'Hello, ' + this.greeting;
+  }
+}
+
+// sealed prevents adding or deleting properties on Greeter and its prototype (subclassing still works)
+```
+
+---
+
+## 78. **Template Literal Types for Events and CSS**
+
+Introduced in TypeScript 4.1. Useful for API endpoints, CSS class names, or event names.
+
+```typescript
+type Direction = 'left' | 'right' | 'up' | 'down';
+type MoveEvent = `move${Capitalize<Direction>}`;
+// "moveLeft" | "moveRight" | "moveUp" | "moveDown"
+
+type CSSUnit = 'px' | 'em' | 'rem' | 'vh' | 'vw';
+type Padding = `padding-${CSSUnit}`;
+// "padding-px" | "padding-em" | "padding-rem" | "padding-vh" | "padding-vw"
+```
+
+String helpers: `Capitalize<T>`, `Uncapitalize<T>`, `Uppercase<T>`, `Lowercase<T>`.
+
+---
+
+## 79. **Discriminated Unions**
+
+  * **The Discriminant:** A single literal property (`kind`, `type`, `status`, etc.) common to all types in the union.
+  * **Exhaustive Checking:** A `switch` plus the `never` type ensures every case is handled.
+
+**Use Case:** The gold standard for messages or events where each has a different payload but a common `type` field.
+
+```typescript
+interface Square { kind: 'square'; size: number; }
+interface Rectangle { kind: 'rectangle'; width: number; height: number; }
+interface Circle { kind: 'circle'; radius: number; }
+
+type Shape = Square | Rectangle | Circle;
+
+function getArea(shape: Shape): number {
+  switch (shape.kind) {
+    case 'square':
+      return shape.size * shape.size;
+    case 'rectangle':
+      return shape.width * shape.height;
+    case 'circle':
+      return Math.PI * shape.radius ** 2;
+    default:
+      const _exhaustiveCheck: never = shape;
+      return _exhaustiveCheck;
+  }
+}
+```
+
+In each `case`, TypeScript narrows `shape` by its `kind`.
+
+---
+
+## 80. **`as const`, Index Signatures, and Indexed Access**
+
+```typescript
+// as const infers the narrowest type
+let colors = ['red', 'green', 'blue']; // string[]
+let colorsAsConst = ['red', 'green', 'blue'] as const; // readonly ["red", "green", "blue"]
+
+function printColor(color: typeof colorsAsConst[number]) { // "red" | "green" | "blue"
+  console.log(color);
+}
+printColor('red'); // OK
+// printColor('yellow'); // Error
+
+const person = { name: 'Alex', age: 30 } as const;
+type PersonType = typeof person; // { readonly name: 'Alex'; readonly age: 30; }
+
+// Index signatures: dynamic keys with known key/value types (dictionaries, settings, caches)
+interface StringDictionary {
+  [key: string]: string;
+}
+let myDictionary: StringDictionary = {};
+myDictionary['language'] = 'en';
+// myDictionary['count'] = 1; // Error: number is not assignable to string
+
+interface UserSettings {
+  [key: string]: string | number | boolean;
+}
+let settings: UserSettings = { theme: 'dark', fontSize: 14, receiveNotifications: true };
+
+// Indexed access: type-level property lookup
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+type UserID = User['id']; // number
+type UserData = User['id' | 'name']; // number | string
+```
+
+Index signature keys must be `string`, `number`, `symbol`, or a template literal type. Literal types also apply to booleans, enums, and `null`; `as const` is handy for configuration and state objects where specific values matter.
+
+---
+
+## 81. **Function Overloads with Mixed Arguments**
+
+```typescript
+// Overload signatures (what consumers see)
+function add(a: number, b: number): number;
+function add(a: string, b: string): string;
+function add(a: string, b: number): string;
+function add(a: number, b: string): string;
+
+// The single implementation signature (hidden from consumers)
+function add(a: any, b: any): any {
+  if (typeof a === 'string' || typeof b === 'string') {
+    return a.toString() + b.toString();
+  }
+  return a + b;
+}
+
+let result1 = add(10, 20); // number
+let result2 = add('Hello', 'World'); // string
+let result3 = add(5, 'apples'); // string
+// let result4 = add(true, false); // Error: No overload matches this call.
+```
+
+---
+
+## 82. **The TypeScript Language Server**
+
+The `typescript` package also ships `tsserver`, the language server that powers editor features:
+
+  * **Autocompletion**
+  * **Go-to-Definition**
+  * **Refactoring**
+  * **Error Highlighting**
+
+The editor sends your code to `tsserver`, a background process that analyzes it and responds, so you get type feedback without running a manual compile step.
 
 ---
 
