@@ -1,6 +1,8 @@
-Here is the complete, combined architecture. This setup uses the **Repository-Service Pattern** alongside a **production-ready PostgreSQL connection pool** that supports transactions and handles serverless edge cases safely.
+# Next.js + PostgreSQL: Repository-Service pattern
 
-Here is how your directory structure will look:
+This setup uses the **Repository-Service Pattern** alongside a **production-ready PostgreSQL connection pool** that supports transactions and handles serverless edge cases safely.
+
+Directory structure:
 
 ```text
 ├── lib/
@@ -25,7 +27,7 @@ This is the foundational layer. It sets up the connection pool, catches backgrou
 ```typescript
 import { Pool, PoolClient } from 'pg';
 
-const globalForPg = global as unknown as { pgPool: Pool };
+const globalForPg = globalThis as unknown as { pgPool?: Pool };
 
 export const pool =
   globalForPg.pgPool ||
@@ -235,8 +237,11 @@ import { verifySession } from '@/lib/auth';
 
 export async function POST(request: Request) {
   const session = await verifySession();
-  if (!session?.user?.isAdmin) {
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!session.user?.isAdmin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   try {
@@ -260,7 +265,7 @@ export async function POST(request: Request) {
 
 With this setup, your application is highly decoupled, secure against SQL injection, resilient to connection drops, and perfectly structured to grow without turning into spaghetti code.
 
-Here is how you wire the `createUserAction` to a React 19 Client Component.
+## Wiring the Server Action to a React 19 Client Component
 
 React 19 simplifies form handling immensely with the `useActionState` hook. It manages the form's state (success, errors, field validation) and natively provides an `isPending` flag, meaning you no longer need complex state management just to show a loading spinner.
 
