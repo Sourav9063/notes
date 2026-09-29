@@ -24,6 +24,7 @@ Open [`index.html`](index.html) for a searchable browser that renders every trac
 - [Clean Code JavaScript](javascript/clean-code/README.md) - Clean Code principles for JavaScript (upstream mirror)
 - [JavaScript Objects](javascript/Object/README.md) - Deep dive into JavaScript objects
 - [Design Patterns](javascript/design-pattern/README.md) - Creational, structural, and behavioral patterns: OOP vs functional
+- [Design Pattern Catalog](javascript/design-pattern/catalog.md) - One-line definitions and sketches of 100 patterns and combinations
 - [Functional Programming](javascript/design-pattern/functional.md) - Pure functions, composition, functors, monads
 - [Design Pattern Sketch Notes](javascript/design-pattern/Note/README.md) - Hand-drawn pattern notes
 - [JavaScript Algorithms](javascript/javascript-algorithms/README.md) - Algorithms and data structures with explanations (upstream mirror)
