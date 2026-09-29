@@ -1,3 +1,7 @@
+# VSCodeVim Roadmap
+
+> Source: [VSCodeVim/Vim `ROADMAP.md`](https://github.com/VSCodeVim/Vim/blob/17e5fd71%5E/ROADMAP.md), last upstream version before it was deleted on 2025-05-22. No newer copy exists.
+
 ## Key
 
 :white_check_mark: - command done
