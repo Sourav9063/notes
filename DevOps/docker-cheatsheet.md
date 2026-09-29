@@ -1,3 +1,7 @@
+# Docker Cheat Sheet
+
+Based on [LeCoupa/awesome-cheatsheets](https://github.com/LeCoupa/awesome-cheatsheets/blob/master/tools/docker.sh).
+
 ```bash
 ##############################################################################
 # DOCKER
@@ -23,28 +27,29 @@ docker login                                # Log in this CLI session using your
 docker tag <image> username/repository:tag  # Tag <image> for upload to registry
 docker push username/repository:tag         # Upload tagged image to registry
 docker run username/repository:tag          # Run image from a registry
-docker system prune                         # Remove all unused containers, networks, images (both dangling and unreferenced), and optionally, volumes. (Docker 17.06.1-ce and superior)
-docker system prune -a                      # Remove all unused containers, networks, images not just dangling ones (Docker 17.06.1-ce and superior)
-docker volume prune                         # Remove all unused local volumes
+docker system prune                         # Remove stopped containers, unused networks, dangling images, build cache
+docker system prune -a --volumes            # Also remove all unused (not just dangling) images and unused volumes
+docker volume prune                         # Remove unused anonymous volumes (add -a for named ones too)
 docker network prune                        # Remove all unused networks
 
 
 ##############################################################################
-# DOCKER COMPOSE
+# DOCKER COMPOSE (v2 plugin: `docker compose`; legacy v1 binary was `docker-compose`)
 ##############################################################################
 
 
-docker-compose up                               # Create and start containers
-docker-compose up -d                            # Create and start containers in detached mode
-docker-compose down                             # Stop and remove containers, networks, images, and volumes
-docker-compose logs                             # View output from containers
-docker-compose restart                          # Restart all service
-docker-compose pull                             # Pull all image service 
-docker-compose build                            # Build all image service
-docker-compose config                           # Validate and view the Compose file
-docker-compose scale <service_name>=<replica>   # Scale special service(s)
-docker-compose top                              # Display the running processes
-docker-compose run -rm -p 2022:22 web bash      # Start web service and runs bash as its command, remove old container.
+docker compose up                               # Create and start containers
+docker compose up -d                            # Create and start containers in detached mode
+docker compose down                             # Stop and remove containers and networks
+docker compose down -v --rmi all                # ...also remove volumes and images
+docker compose logs -f                          # Follow output from containers
+docker compose restart                          # Restart all services
+docker compose pull                             # Pull all service images
+docker compose build                            # Build all service images
+docker compose config                           # Validate and view the Compose file
+docker compose up -d --scale <service>=<n>      # Scale a service (replaces deprecated `scale`)
+docker compose top                              # Display the running processes
+docker compose run --rm -p 2022:22 web bash     # Run bash in a one-off web container; remove it on exit
 
 ##############################################################################
 # DOCKER SERVICES 
@@ -54,7 +59,7 @@ docker-compose run -rm -p 2022:22 web bash      # Start web service and runs bas
 docker service create <options> <image> <command>   # Create new service
 docker service inspect --pretty <service_name>      # Display detailed information Service(s)
 docker service ls                                   # List Services
-docker service ps                                   # List the tasks of Services
+docker service ps <service_name>                    # List the tasks of a service
 docker service scale <service_name>=<replica>       # Scale special service(s)
 docker service update <options> <service_name>      # Update Service options
 
@@ -72,7 +77,7 @@ docker stack rm <appname>                       # Tear down an application
 
 
 ##############################################################################
-# DOCKER MACHINE
+# DOCKER MACHINE (deprecated: archived by Docker in 2021; use Docker Desktop or cloud VMs)
 ##############################################################################
 
 
