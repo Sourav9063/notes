@@ -1,3 +1,5 @@
+# GitHub password authentication failed
+
 You're seeing this error because GitHub no longer allows you to use your account password for Git operations on the command line as of August 13, 2021. This change was made to improve security.
 
 Instead of your password, you now need to use a **Personal Access Token (PAT)** or configure **SSH keys**.
@@ -25,13 +27,17 @@ A Personal Access Token is a long, randomly generated string that you use in pla
 
 Now, when you run a Git command (like `git push` or `git clone`) and it asks for your password, paste the Personal Access Token you just copied.
 
-It's often easier to update your remote URL to include the token so you don't have to enter it every time:
+Let Git remember it with a credential helper instead of retyping it:
 
 ```bash
-git remote set-url origin https://<YOUR_USERNAME>:<YOUR_TOKEN>@github.com/<YOUR_USERNAME>/<YOUR_REPO>.git
+git config --global credential.helper osxkeychain   # macOS
+git config --global credential.helper manager       # Windows (Git Credential Manager)
+git config --global credential.helper store         # Linux, plaintext in ~/.git-credentials
 ```
 
-Replace `<YOUR_USERNAME>`, `<YOUR_TOKEN>`, and `<YOUR_REPO>` with your actual details.
+Avoid putting the token in the remote URL (`https://user:token@github.com/...`): it is saved in plaintext in `.git/config` and leaks through `git remote -v`.
+
+Fine-grained tokens (**Personal access tokens > Fine-grained tokens**) can be limited to specific repositories and are safer than classic tokens.
 
 -----
 
@@ -84,12 +90,16 @@ When prompted to "Enter a file in which to save the key," just press **Enter** t
 Finally, make sure your repository is configured to use the SSH URL instead of the HTTPS one. You can check this with `git remote -v`. If it shows an `https://` URL, change it with this command:
 
 ```bash
-git remote set-url origin git@github.com:Sourav9063/config.git
+git remote set-url origin git@github.com:<YOUR_USERNAME>/<YOUR_REPO>.git
 ```
 
 Now, all your Git commands for this repository will use the secure SSH connection, and you won't need to enter a password or token.
 
-Of course. When `ssh-keygen` prompts you with:
+-----
+
+### Custom key location
+
+When `ssh-keygen` prompts you with:
 
 ```
 Enter a file in which to save the key (/c/Users/YOUR_USERNAME/.ssh/id_ed25519):
@@ -127,4 +137,12 @@ Now, add your key to the SSH agent using the **exact path** you specified earlie
 ssh-add /c/Users/YOUR_USERNAME/CustomKeys/my_new_key
 ```
 
-After doing this, you'll be able to authenticate with GitHub using your new, custom-located key. You'll need to repeat the `ssh-add` command for each new terminal session.
+After doing this, you'll be able to authenticate with GitHub using your new, custom-located key. `ssh-add` lasts only for the agent's session. To make it permanent, point SSH at the key in `~/.ssh/config`:
+
+```text
+Host github.com
+  IdentityFile ~/CustomKeys/my_new_key
+  AddKeysToAgent yes
+```
+
+Test with `ssh -T git@github.com`.

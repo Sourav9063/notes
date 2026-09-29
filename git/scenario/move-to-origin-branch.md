@@ -1,3 +1,5 @@
+# Check out a remote branch locally
+
 **Recommended (Modern Git: `git switch`)**
 
 1.  **First, ensure your local repository has the latest information about remote branches:**

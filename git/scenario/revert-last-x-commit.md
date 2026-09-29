@@ -1,8 +1,10 @@
-You have hit the exact right solution. If you need a Pull Request to remove code from a target branch, you cannot use `git reset`. You must use **`git revert`**.
+# Revert the last N commits in one commit
+
+If you need a Pull Request to remove code from a target branch, you cannot use `git reset`. You must use **`git revert`**.
 
 While `reset` tries to rewrite history, `revert` creates a **brand new commit** that does the exact mathematical opposite of the commits you want to undo. Because it is a new commit, Git sees it as an "addition" of code deletions, which the PR system perfectly understands.
 
-Here is exactly how to bundle the undoing of those 5 commits into **one single new commit**:
+Bundle the undoing of the last 5 commits into **one new commit**:
 
 ### Step 1: Revert the commits without saving them immediately
 Run this command to tell Git to undo the last 5 commits, but keep the undone changes staged in your working directory instead of creating 5 separate revert commits:
@@ -10,7 +12,7 @@ Run this command to tell Git to undo the last 5 commits, but keep the undone cha
 ```bash
 git revert --no-commit HEAD~5..HEAD
 ```
-*(Note: `--no-commit` can also be written as `-n`. The `HEAD~5..HEAD` part tells Git the range of commits to look at).*
+*(Note: `--no-commit` can also be written as `-n`. The `HEAD~5..HEAD` part tells Git the range of commits to look at. If the range contains merge commits, revert fails; revert those separately with `-m 1`).*
 
 ### Step 2: Create your single undo commit
 Now that Git has staged all the deletions and reversals, you just need to commit them like normal:

@@ -1,9 +1,11 @@
-The core difference is that HEAD origin/main compares the endpoints of the two branches directly, while HEAD...origin/main compares the remote branch to their last common ancestor.
-Adding the third dot changes the command from a direct comparison to an asymmetrical log history or ancestry diff.
+# `git diff HEAD origin/main` vs `HEAD...origin/main`
+
+The core difference is that `HEAD origin/main` compares the endpoints of the two branches directly, while `HEAD...origin/main` compares the remote branch to their last common ancestor.
+Adding the third dot changes the command from a tip-to-tip comparison to a diff from the merge base.
 
 ------------------------------
 ## 🟢 1. With Two Dots (or Space): HEAD origin/main
-(Note: git diff HEAD origin/main is identical to git diff HEAD..origin/main)
+(Note: `git diff HEAD origin/main` is identical to `git diff HEAD..origin/main`.)
 
 * What it does: Performs a straight comparison between the tip of your local branch (HEAD) and the tip of the remote branch (origin/main).
 * What it shows: Every single difference between the two states, including changes you made locally and changes others made on the remote.
@@ -27,13 +29,5 @@ A (Common Ancestor)
       C (origin/main - your teammate's commit)
 ```
 
-* git diff HEAD origin/main: Compares B to C. It will show your local changes as deletions and remote changes as additions.
-* git diff HEAD...origin/main: Compares A to C. It only shows what changed in C, completely ignoring your work in B.
-
-------------------------------
-Depending on what you are trying to figure out next, let me know:
-
-* Do you want to see how many commits you are behind using git log?
-* Do you want to know how to safely integrate those remote changes now?
-
-
+* `git diff HEAD origin/main`: Compares B to C. It will show your local changes as deletions and remote changes as additions.
+* `git diff HEAD...origin/main`: Compares A to C. It only shows what changed in C, completely ignoring your work in B.
