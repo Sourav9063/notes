@@ -675,6 +675,12 @@ FROM employees;
 | Top N per group | `ROW_NUMBER()` (exactly N) or `DENSE_RANK()` (keep ties) |
 | Running total | `SUM(...) OVER (ORDER BY ...)` |
 | N-row rolling average | `AVG(...) OVER (ORDER BY ... ROWS BETWEEN N-1 PRECEDING AND CURRENT ROW)` |
+| Look at the next row (next funnel step, subscription end from the next start date) | `LEAD()` |
+| Opening vs closing price of a stock per day | `FIRST_VALUE()` / `LAST_VALUE()` (full frame) |
+| Olympic-style leaderboard (ties share a rank, gap after) | `RANK()` |
+| Popularity or spending tiers | `DENSE_RANK()` / `NTILE(n)` |
+| Latest N orders | `ROW_NUMBER()` |
+| Percentile of a value | `PERCENT_RANK()` / `CUME_DIST()` |
 
 **Use case — deduplicate keeping latest:**
 
@@ -825,6 +831,7 @@ SELECT ROUND(3.14159, 2);   -- 3.14
 SELECT CEIL(3.1);            -- 4
 SELECT FLOOR(3.9);           -- 3
 SELECT TRUNC(3.9);           -- 3 (towards zero)
+SELECT RANDOM();             -- random double in [0.0, 1.0)
 ```
 
 ---
@@ -1690,9 +1697,11 @@ SELECT * FROM cities WHERE name LIKE '%hak%';       -- contains 'hak'
 SELECT * FROM cities WHERE name LIKE 'Dh_ka';       -- 'Dhaka', 'Dhoka', etc.
 
 SELECT * FROM cities WHERE name ILIKE '%dhaka%';    -- case-insensitive
+SELECT * FROM cities WHERE name ILIKE 'dhaka';      -- case-insensitive exact match (no wildcards)
 
 -- Negation:
 SELECT * FROM cities WHERE name NOT LIKE 'Dh%';
+SELECT * FROM cities WHERE name NOT ILIKE 'dh%';
 
 -- Escape literal % or _:
 SELECT * FROM logs WHERE message LIKE '100\%';      -- literal '100%'
@@ -1718,6 +1727,13 @@ A middle ground between `LIKE` and POSIX regex. Uses `|` for alternation, `*` an
 SELECT 'abc' SIMILAR TO '(b|c)%';    -- FALSE (pattern must match the whole string)
 SELECT 'abc' SIMILAR TO '%(b|d)%';   -- TRUE
 SELECT 'abcde' SIMILAR TO 'a%c_e';   -- TRUE (% and _ work like LIKE; . is a literal)
+
+SELECT 'abc' NOT SIMILAR TO 'a%';    -- FALSE
+
+-- Metacharacters: % _ | * + ? {m} {m,} {m,n} () [...]
+SELECT 'aaa' SIMILAR TO 'a{3}';      -- TRUE
+SELECT '42'  SIMILAR TO '[0-9]+';    -- TRUE
+-- ^ and $ are not anchors here: the whole string always has to match
 
 -- SUBSTRING with a SIMILAR pattern: #" marks the part to return
 SELECT SUBSTRING('ABCDE' SIMILAR '%#"B_D#"_' ESCAPE '#');  -- 'BCD'
@@ -1752,7 +1768,9 @@ SELECT * FROM users WHERE email !~ '@';   -- emails without @
 
 - `.` matches newline by default; the `n` flag makes `.`, `[^...]`, `^`, and `$` newline-sensitive.
 - Word boundaries are `\m` (start of word), `\M` (end of word), `\y` (either), `\Y` (not a boundary). `\b` means backspace, not a word boundary.
-- POSIX classes go inside a bracket expression: `[[:alpha:]]`, `[[:digit:]]`, `[[:space:]]`. Shorthands `\d`, `\s`, `\w` also work.
+- POSIX classes go inside a bracket expression: `[[:alpha:]]`, `[[:digit:]]`, `[[:alnum:]]`, `[[:lower:]]`, `[[:upper:]]`, `[[:space:]]`. Shorthands `\d`, `\s`, `\w` (`[[:alnum:]_]`) also work; `\D`, `\S`, `\W` are their negations.
+- `\A` and `\Z` match only at the start and end of the whole string (unaffected by the `n` flag). `\B` is a synonym for backslash, not a non-boundary.
+- Otherwise standard syntax: `.` any char, `*` `+` `?` `{m,n}` quantifiers, `|` alternation, `()` capture groups, `[abc]`, `[a-z]`, `[^0-9]` bracket expressions, `\.` escapes a literal dot.
 - Flags (last argument of regex functions): `i` case-insensitive, `g` all matches (`REGEXP_MATCHES` / `REGEXP_REPLACE` only), `n` newline-sensitive, `x` expanded syntax (ignore whitespace and `#` comments).
 
 ### Regex Functions
