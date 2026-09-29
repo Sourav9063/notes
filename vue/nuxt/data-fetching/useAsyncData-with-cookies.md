@@ -1,6 +1,6 @@
-You're running into a common issue in Nuxt 3: `localStorage` is a browser-only feature, and it doesn't exist in the server environment where `useAsyncData` first runs during server-side rendering (SSR). This leads to an error when your async function tries to access `localStorage` to get the authentication token on the server.
+# Nuxt `useAsyncData` with auth tokens: cookies vs `localStorage`
 
-Here's how to fix this, with the recommended approach first.
+A common SSR issue in Nuxt: `localStorage` is a browser-only feature, and it doesn't exist in the server environment where `useAsyncData` first runs during server-side rendering (SSR). Reading the token from it inside the `useAsyncData` handler therefore throws on the server.
 
 -----
 
@@ -26,26 +26,23 @@ async function login() {
 
 ### 2\. Accessing the Token in `useAsyncData`
 
-Now, you can access the cookie on both the server and the client. You can then use the `useRequestHeaders` composable to pass the cookie to your API call within `useAsyncData`.
+The cookie is available on both server and client. During SSR, a plain `$fetch` does **not** forward the incoming request's cookies, so use `useRequestFetch()` (call it in `setup`, not inside the handler):
 
 ```vue
 <script setup>
-import { useRequestHeaders } from '#app';
+const requestFetch = useRequestFetch(); // forwards request headers (incl. cookie) during SSR
 
-const { data, error } = await useAsyncData('some-data', () => {
-  const headers = useRequestHeaders(['cookie']);
-
-  return $fetch('/api/protected-data', {
-    headers: {
-      // Forward the cookie to the API route
-      ...headers,
-    }
-  });
-});
+const { data, error } = await useAsyncData('some-data', () =>
+  requestFetch('/api/protected-data')
+);
 </script>
 ```
 
-On the server-side, your API route can now access the cookie from the request headers to verify the user's identity.
+`useFetch('/api/protected-data')` does this automatically for relative URLs. For an external API, forward headers explicitly with `useRequestHeaders(['cookie'])`, also called in `setup`.
+
+On the server, the API route reads the cookie (e.g. `getCookie(event, 'auth-token')`) to verify the user.
+
+A cookie written by `useCookie` in the browser is readable by JavaScript. For stronger XSS protection, have the login API set an `httpOnly`, `secure`, `sameSite` cookie instead.
 
 -----
 
@@ -62,7 +59,7 @@ This approach will cause the data to be fetched only on the client-side, where `
 const { data, pending, error } = useAsyncData(
   'some-data',
   () => {
-    if (process.client) {
+    if (import.meta.client) {
       const token = localStorage.getItem('auth-token');
       return $fetch('/api/protected-data', {
         headers: {
@@ -82,5 +79,5 @@ const { data, pending, error } = useAsyncData(
 In this example:
 
   - `server: false` ensures that this `useAsyncData` call only runs on the client.
-  - `process.client` provides an extra layer of safety to ensure the code that accesses `localStorage` only executes in a browser environment.
+  - `import.meta.client` (formerly `process.client`) provides an extra layer of safety to ensure the code that accesses `localStorage` only executes in a browser environment.
   - `lazy: true` is recommended to prevent the page from blocking while waiting for the data. You can use the `pending` state to show a loading indicator to the user.
