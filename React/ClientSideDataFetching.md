@@ -2,6 +2,8 @@
 
 This guide compares data fetching in React Client Components: the traditional imperative approach (`useEffect` + `useState`) and the declarative React 19 approach (`use()` + `<Suspense>` + Error Boundary), in the Next.js App Router.
 
+The shift is from **synchronizing state** (manually tracking loading, error, and stale requests) to **streaming resources**: the component declares which data it needs, and React handles waiting and failure.
+
 ---
 
 ## The Core Rule of `use()`
@@ -201,6 +203,7 @@ export default function UserCard({ userPromise }: { userPromise: Promise<User> }
 
 #### When to use
 - Data depends on client state that is not in the URL: search input, filters, button clicks.
+- **Search-as-you-type** without the URL changing on every keystroke.
 - **Modals/overlays** showing details for an item that has no route.
 - **Form previews** based on unsaved input.
 - When you want to keep temporary UI state out of the URL.
@@ -293,6 +296,7 @@ For anything beyond simple cases (invalidation, refetching, cache eviction), use
 | :--- | :--- |
 | Handles client interactions declaratively. | Starts later than passing a promise from the server. |
 | Keeps temporary UI state out of the URL. | Promise ownership must be designed deliberately. |
+| Children sharing one promise do not waterfall. | A module-level cache keeps promises in memory until evicted. |
 
 ---
 
@@ -366,6 +370,9 @@ export default function ServerActionProfile({ userId }: { userId: string }) {
 ---
 
 ### 2. Modern: the `use()` Paradigm
+
+#### When to use
+- To treat a Server Action as a **resource** read with Suspense, not only as an event handler.
 
 A Server Action returns a Promise, so `use()` can unwrap it like any other promise, under the same stability rule.
 
@@ -477,6 +484,12 @@ function UserResults({ resultsPromise }: { resultsPromise: Promise<{ count: numb
 - Every new promise sends a `POST` request. Debounce text input.
 - Without stable ownership, the action runs on every render and spams the server.
 
+#### Pros and Cons
+| Pros | Cons |
+| :--- | :--- |
+| Concise client-initiated server logic. | Higher server load when input changes often. |
+| Uses Suspense for loading automatically. | Promise ownership must be explicit. |
+
 ---
 
 ## Comparison
@@ -487,6 +500,8 @@ function UserResults({ resultsPromise }: { resultsPromise: Promise<{ count: numb
 | **Loading state** | Manual (`if (loading)`) | Declarative (`<Suspense>`) |
 | **Error handling** | Manual (`try/catch` + state) | Declarative (`<ErrorBoundary>`) |
 | **Start time** | After mount | On the server, or when the event fires |
+| **Nested data** | Child fetches wait for parents (waterfall) | Promises created up front run in parallel |
+| **User experience** | Spinner, then content pops in (layout shift) | Shell first, skeletons replaced by streamed data |
 | **Race conditions** | Manual (`AbortController` / ignore flag) | Each render reads the promise it was given, so stale results are not shown. The old request is not cancelled. |
 
 ---
