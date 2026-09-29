@@ -1,4 +1,4 @@
-## Key Functional Patterns & Techniques in JavaScript
+# Key Functional Patterns & Techniques in JavaScript
 
 Functional programming emphasizes pure functions, immutability, function composition, and avoiding side effects. Here are some core patterns and techniques used in functional JavaScript:
 
@@ -188,26 +188,28 @@ Functional programming emphasizes pure functions, immutability, function composi
   2.  It causes no observable side effects (doesn't modify external state, log to console, write to disk, make network requests).
 - **Use Case:** Core building blocks in FP. Pure functions are predictable, testable, easier to reason about, and facilitate techniques like memoization and parallelization.
 - **Example:**
+
   ```javascript
   // Pure function: Output depends only on input, no side effects
-  const calculateArea = (radius) => Math.PI _ radius _ radius;
+  const calculateArea = (radius) => Math.PI * radius * radius;
 
-      // Impure function: Depends on external state (Date.now)
-      const getTimestampedMessage = (message) => `${Date.now()}: ${message}`;
+  // Impure function: Depends on external state (Date.now)
+  const getTimestampedMessage = (message) => `${Date.now()}: ${message}`;
 
-      // Impure function: Causes a side effect (console.log)
-      const logMessage = (message) => console.log(message);
+  // Impure function: Causes a side effect (console.log)
+  const logMessage = (message) => console.log(message);
 
-      // Impure function: Modifies external state
-      let counter = 0;
-      const incrementGlobalCounter = () => { counter++; return counter; };
+  // Impure function: Modifies external state
+  let counter = 0;
+  const incrementGlobalCounter = () => {
+    counter++;
+    return counter;
+  };
 
-      console.log("Area:", calculateArea(5)); // Always the same for input 5
-      console.log("Area:", calculateArea(5)); // Still the same
-      console.log("Timestamped:", getTimestampedMessage("Test")); // Different each time
-      ```
-
-  Okay, let's delve into a few more concepts and patterns commonly found in functional JavaScript programming, building upon the previous list.
+  console.log("Area:", calculateArea(5)); // Always the same for input 5
+  console.log("Area:", calculateArea(5)); // Still the same
+  console.log("Timestamped:", getTimestampedMessage("Test")); // Different each time
+  ```
 
 **7. Memoization**
 
@@ -233,26 +235,18 @@ Functional programming emphasizes pure functions, immutability, function composi
     };
   };
 
-  // An expensive function (e.g., recursive Fibonacci - inefficiently written for demo)
-  const slowFib = (n) => {
-    if (n <= 1) return n;
-    return slowFib(n - 1) + slowFib(n - 2);
-  };
+  // Expensive recursive function (exponential time without memoization)
+  const slowFib = (n) => (n <= 1 ? n : slowFib(n - 1) + slowFib(n - 2));
 
-  const memoizedFib = memoize(slowFib);
+  // Wrapping only caches top-level calls: the first call is still slow
+  // because slowFib's recursive calls bypass the cache.
+  const memoizedSlowFib = memoize(slowFib);
+  memoizedSlowFib(30); // Slow (miss)
+  memoizedSlowFib(30); // Instant (hit)
 
-  console.time("Fib 35 (Memoized)");
-  console.log("Fib(35):", memoizedFib(35)); // Computes relatively quickly
-  console.timeEnd("Fib 35 (Memoized)");
-
-  console.time("Fib 35 (Memoized again)");
-  console.log("Fib(35) again:", memoizedFib(35)); // Returns instantly from cache
-  console.timeEnd("Fib 35 (Memoized again)");
-
-  // Compare with non-memoized (would be very slow)
-  // console.time("Fib 35 (Slow)");
-  // console.log("Fib(35) slow:", slowFib(35)); // Takes significant time
-  // console.timeEnd("Fib 35 (Slow)");
+  // Recurse through the memoized function so every sub-result is cached (linear time)
+  const fib = memoize((n) => (n <= 1 ? n : fib(n - 1) + fib(n - 2)));
+  console.log("Fib(35):", fib(35)); // 9227465
   ```
 
 **8. Functor**
@@ -273,8 +267,8 @@ Functional programming emphasizes pure functions, immutability, function composi
   console.log("Incremented Array:", incrementedNumbers); // [ 2, 3, 4 ]
 
   // Functor laws (informally):
-  // 1. Identity: container.map(x => x) === container
-  // 2. Composition: container.map(x => f(g(x))) === container.map(g).map(f)
+  // 1. Identity: container.map(x => x) is equivalent to container
+  // 2. Composition: container.map(x => f(g(x))) is equivalent to container.map(g).map(f)
   ```
 
 - **Example (Custom Functor - Maybe/Optional):**
@@ -320,7 +314,7 @@ Functional programming emphasizes pure functions, immutability, function composi
 
   ```javascript
   const getUser = (userId) => {
-    console.log(`Workspaceing user ${userId}...`);
+    console.log(`Fetching user ${userId}...`);
     // Simulates an async API call returning a Promise (a Monad)
     return new Promise((resolve) =>
       setTimeout(() => resolve({ id: userId, name: `User_${userId}` }), 50),
@@ -328,7 +322,7 @@ Functional programming emphasizes pure functions, immutability, function composi
   };
 
   const getSettings = (user) => {
-    console.log(`Workspaceing settings for ${user.name}...`);
+    console.log(`Fetching settings for ${user.name}...`);
     return new Promise((resolve) =>
       setTimeout(() => resolve({ userId: user.id, theme: "dark" }), 50),
     );
@@ -390,8 +384,6 @@ Functional programming emphasizes pure functions, immutability, function composi
   ); // Output: N/A
   ```
 
-  Certainly! Here are additional functional programming patterns and concepts relevant to JavaScript, expanding on the previous list:
-
 ---
 
 **10. Either (Result) Monad**
@@ -401,32 +393,35 @@ Functional programming emphasizes pure functions, immutability, function composi
 - **Example:**
 
   ```javascript
-  const Either = {
-    Left: (value) => ({
-      map: () => Either.Left(value), // Ignores mapping on Left
-      catch: (fn) => fn(value), // Handle error
-      isLeft: true,
-    }),
-    Right: (value) => ({
-      map: (fn) => Either.Right(fn(value)),
-      catch: () => Either.Right(value), // Ignores catch on Right
-      isLeft: false,
-    }),
-  };
+  const Left = (error) => ({
+    map: () => Left(error), // Skips mapping on Left
+    flatMap: () => Left(error),
+    fold: (onLeft, _onRight) => onLeft(error),
+  });
+  const Right = (value) => ({
+    map: (fn) => Right(fn(value)),
+    flatMap: (fn) => fn(value), // fn returns another Either
+    fold: (_onLeft, onRight) => onRight(value),
+  });
 
   // Example: Safe division (avoid division by zero)
   const safeDivide = (a, b) =>
-    b === 0 ? Either.Left("Division by zero") : Either.Right(a / b);
+    b === 0 ? Left("Division by zero") : Right(a / b);
 
-  // Usage: Chaining with error handling
+  // Usage: fold forces handling both cases
   safeDivide(10, 2)
     .map((result) => result * 3)
-    .map((result) => `Result: ${result}`)
-    .catch((error) => `Error: ${error}`); // "Result: 15"
+    .fold(
+      (error) => `Error: ${error}`,
+      (result) => `Result: ${result}`,
+    ); // "Result: 15"
 
   safeDivide(10, 0)
     .map((result) => result * 3) // Skipped
-    .catch((error) => `Error: ${error}`); // "Error: Division by zero"
+    .fold(
+      (error) => `Error: ${error}`,
+      (result) => `Result: ${result}`,
+    ); // "Error: Division by zero"
   ```
 
 ---
@@ -517,7 +512,7 @@ Functional programming emphasizes pure functions, immutability, function composi
 
 **14. Tail Call Optimization (TCO)**
 
-- **Concept:** A compiler optimization where the last action of a function is a recursive call, reusing the current stack frame. While ES6 specifies TCO, most JS engines don’t fully implement it.
+- **Concept:** When a function's last action is a call (a tail call), the engine can reuse the current stack frame. ES2015 specifies proper tail calls in strict mode, but only JavaScriptCore (Safari) implements them; V8 (Chrome, Node.js) and SpiderMonkey (Firefox) do not.
 - **Use Case:** Avoiding stack overflow in deep recursion.
 - **Example (Theoretical):**
 
@@ -529,7 +524,18 @@ Functional programming emphasizes pure functions, immutability, function composi
   const factorialTail = (n, acc = 1) =>
     n <= 1 ? acc : factorialTail(n - 1, acc * n);
 
-  console.log(factorialTail(5)); // 120 (Works in engines with TCO)
+  console.log(factorialTail(5)); // 120 everywhere; only Safari avoids stack growth for huge n
+
+  // Portable alternative: a trampoline runs thunks in a loop instead of recursing
+  const trampoline = (fn) => (...args) => {
+    let result = fn(...args);
+    while (typeof result === "function") result = result();
+    return result;
+  };
+  const sumTo = trampoline(function sum(n, acc = 0) {
+    return n === 0 ? acc : () => sum(n - 1, acc + n);
+  });
+  console.log(sumTo(100000)); // 5000050000, no stack overflow
   ```
 
 ---
@@ -538,20 +544,24 @@ Functional programming emphasizes pure functions, immutability, function composi
 
 - **Concept:** Extend Functors by allowing functions within a context to be applied to values in the same context. Useful for combining multiple wrapped values (e.g., combining two `Maybe` values).
 - **Use Case:** Validating multiple inputs where each might fail, combining async operations.
-- **Example (Using Folktale's `Maybe`):**
+- **Example (Minimal applicative `Maybe`):**
 
   ```javascript
-  import * as F from "folktale";
+  const Just = (value) => ({
+    map: (fn) => Just(fn(value)),
+    ap: (other) => other.map(value), // `value` is a wrapped function
+    getOrElse: () => value,
+  });
+  const Nothing = () => ({
+    map: () => Nothing(),
+    ap: () => Nothing(),
+    getOrElse: (defaultValue) => defaultValue,
+  });
 
-  const add = (a, b) => a + b;
+  const add = (a) => (b) => a + b; // Curried so it can take one wrapped value at a time
 
-  // Applicative application
-  const maybeAdd = F.maybe.of(add.curry()); // Wrap the function
-  const maybeA = F.maybe.of(2); // Wrap value 2
-  const maybeB = F.maybe.of(3); // Wrap value 3
-
-  const result = maybeA.ap(maybeB.ap(maybeAdd));
-  console.log(result); // Maybe.Just(5)
+  console.log(Just(add).ap(Just(2)).ap(Just(3)).getOrElse(0)); // 5
+  console.log(Just(add).ap(Nothing()).ap(Just(3)).getOrElse(0)); // 0
   ```
 
 ---
