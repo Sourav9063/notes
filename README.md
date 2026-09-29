@@ -117,6 +117,6 @@ Open [`index.html`](index.html) for a searchable browser that renders every trac
 ---
 
 ### 📝 Miscellaneous
-- [System Design Articles](misc/article.md) - Reading list of system design articles
+- [System Design Articles](misc/system-design-articles.md) - Reading list of system design articles
 - [Google Maps `pb` Parameter](misc/google-maps-pb-parameter.md) - Decoding the Google Maps `pb` URL parameter
 - [Useful GitHub Repositories](repo/README.md) - Curated learning repositories
