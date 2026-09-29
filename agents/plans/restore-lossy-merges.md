@@ -1,6 +1,6 @@
 # Restore knowledge lost in audit merges
 
-Status: in progress
+Status: done
 
 ## Objective
 
@@ -16,8 +16,7 @@ Every piece of knowledge in a file deleted during the notes audit (`notes-audit-
 
 ## Progress
 
-- Done: TypeScript cheatsheet, Postgres, design patterns, misc/article, loop, chatgpt, PrimeVue, postgress-next, `_config.yml`.
-- Pending: `javascript/Object/READMEold.md` and old `Object/README.md`; `React/ClienSideDataFetcing.md` and `React/ClientData.md`; agent/ai files vs ADD.
+- Done: TypeScript cheatsheet, Postgres, design patterns, misc/article, loop, chatgpt, PrimeVue, postgress-next, `_config.yml`, React data fetching, Object (no change needed), agent/ai files vs ADD (gaps reported below).
 
 ## Verification
 
@@ -36,3 +35,14 @@ Every piece of knowledge in a file deleted during the notes audit (`notes-audit-
   - Bugs fixed instead of copied: "Workspaceing" corrected to "Fetching"; undefined `createEventBus` now defined inline; Memento `undoState` restored the wrong snapshot; Visitor word counts (13/14); iterator output comment; `structuredClone` drops the class prototype; `createChatRoom` used `this` in an arrow function; truncated v4 `FlyweightFactory` completed.
 - Postgres: wrong claims dropped: `ENDS_WITH` does not exist; `\b`/`\B` are not word boundaries in Postgres regex; `REGEXP_S_TO_ARRAY` was a typo; `^`/`$` are not `SIMILAR TO` anchors.
 - TypeScript gemini, misc/article, loop, chatgpt, PrimeVue, postgress-next, `_config.yml`: remaining misses are reworded duplicates.
+- Object (`READMEold.md`, old `README.md`): remaining misses are garbled or formatting lines; every topic is in `javascript/Object/README.md`.
+- React data fetching: remaining misses are reworded duplicates. `useMemo`-created promises passed to `use()` were replaced by parent-owned or cached promises (a component that suspends before commit loses its memo). "Dates must be strings" was wrong; React serializes `Date`. Toploader notes moved intact to `React/NextJs/`.
+
+## ADD gaps (reported, not copied back)
+
+Deleted in `d2bede1`; recover with `git show d2bede1^:<path>`.
+
+- `.agent/skills/create-action*`, `create-component`, `review-merge-request`: not in ADD. Project-specific (mapsense layering, `createAction`, two-ref MR review); ADD `reviewing-changes` covers generic review.
+- `ai/AGENT_WORKFLOW.md`, `ai/AI.md`: ADD `docs/` copies are reworded around `AGENTS.md`; the old `CLAUDE.md`-centric tree and per-folder examples are absent. Old permission examples used invalid `Tool:pattern` syntax.
+- `ai/README.md` installer and `ai/claude/statusline-command.sh`: superseded by newer ADD `README.md` installer and `.claude/statusline-command.sh`.
+- `ai/claude/README.md`: source title/URL header and a few article lines absent from ADD `docs/claude/README.md`.
