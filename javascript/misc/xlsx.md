@@ -1,28 +1,25 @@
+# Reading XLSX Files in JavaScript
+
 To read `.xlsx` files in JavaScript, use **SheetJS (xlsx)** library:
 
 **Installation:**
 ```bash
-npm install xlsx
+npm install https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
 ```
+
+SheetJS publishes releases on its own CDN. The `xlsx` package on the npm registry is stuck at 0.18.5 and has known vulnerabilities (prototype pollution, ReDoS); avoid `npm install xlsx`.
 
 **Browser Usage:**
 ```javascript
 import * as XLSX from 'xlsx';
 
-function handleFileUpload(event) {
+async function handleFileUpload(event) {
     const file = event.target.files[0];
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        console.log(jsonData);
-    };
-    
-    reader.readAsArrayBuffer(file);
+    const workbook = XLSX.read(await file.arrayBuffer());
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    console.log(jsonData);
 }
 ```
 
@@ -40,18 +37,10 @@ import * as XLSX from 'xlsx';
 export default {
     methods: {
         async handleFileUpload(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const jsonData = XLSX.utils.sheet_to_json(
-                        workbook.Sheets[workbook.SheetNames[0]]
-                    );
-                    resolve(jsonData);
-                };
-                reader.readAsArrayBuffer(file);
-            });
+            const workbook = XLSX.read(await file.arrayBuffer());
+            return XLSX.utils.sheet_to_json(
+                workbook.Sheets[workbook.SheetNames[0]]
+            );
         }
     }
 }
