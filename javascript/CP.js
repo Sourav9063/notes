@@ -56,25 +56,45 @@ class Queue {
     size() { return this.q.length - this.head; }
 }
 
-// --- Deque (Replaces std::deque) ---
+// --- Deque (Replaces std::deque): O(1) amortized ring buffer ---
 class Deque {
-    constructor() { this.frontArr = []; this.backArr = []; }
-    push_back(val) { this.backArr.push(val); }
-    push_front(val) { this.frontArr.push(val); }
-    pop_back() { 
-        if (this.backArr.length) return this.backArr.pop();
-        return this.frontArr.shift(); // O(N) fallback, rare if balanced
+    constructor() { this.buf = new Array(16); this.head = 0; this.len = 0; }
+    at(i) { return (this.head + i) % this.buf.length; }
+    grow() {
+        const next = new Array(this.buf.length * 2);
+        for (let i = 0; i < this.len; i++) next[i] = this.buf[this.at(i)];
+        this.buf = next;
+        this.head = 0;
     }
-    pop_front() {
-        if (this.frontArr.length) return this.frontArr.pop();
-        let val = this.backArr[0];
-        this.backArr.shift(); // O(N) fallback
+    push_back(val) {
+        if (this.len === this.buf.length) this.grow();
+        this.buf[this.at(this.len++)] = val;
+    }
+    push_front(val) {
+        if (this.len === this.buf.length) this.grow();
+        this.head = (this.head - 1 + this.buf.length) % this.buf.length;
+        this.buf[this.head] = val;
+        this.len++;
+    }
+    pop_back() {
+        if (this.empty()) return undefined;
+        const i = this.at(--this.len);
+        const val = this.buf[i];
+        this.buf[i] = undefined;
         return val;
     }
-    front() { return this.frontArr.length ? this.frontArr[this.frontArr.length - 1] : this.backArr[0]; }
-    back() { return this.backArr.length ? this.backArr[this.backArr.length - 1] : this.frontArr[0]; }
-    empty() { return this.frontArr.length === 0 && this.backArr.length === 0; }
-    size() { return this.frontArr.length + this.backArr.length; }
+    pop_front() {
+        if (this.empty()) return undefined;
+        const val = this.buf[this.head];
+        this.buf[this.head] = undefined;
+        this.head = this.at(1);
+        this.len--;
+        return val;
+    }
+    front() { return this.empty() ? undefined : this.buf[this.head]; }
+    back() { return this.empty() ? undefined : this.buf[this.at(this.len - 1)]; }
+    empty() { return this.len === 0; }
+    size() { return this.len; }
 }
 
 // --- Priority Queue (Replaces std::priority_queue) ---
@@ -195,12 +215,13 @@ const lcm = (a, b) => (a / gcd(a, b)) * b;
 
 // Modular Exponentiation (base^exp % mod)
 const power = (base, exp, mod) => {
-    let res = 1n;
-    base = BigInt(base) % BigInt(mod);
+    mod = BigInt(mod);
+    let res = 1n % mod; // x^0 % 1 === 0
+    base = ((BigInt(base) % mod) + mod) % mod; // keep negative bases in [0, mod)
     exp = BigInt(exp);
     while (exp > 0n) {
-        if (exp % 2n === 1n) res = (res * base) % BigInt(mod);
-        base = (base * base) % BigInt(mod);
+        if (exp % 2n === 1n) res = (res * base) % mod;
+        base = (base * base) % mod;
         exp /= 2n;
     }
     return res;
