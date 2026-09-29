@@ -150,17 +150,12 @@ func main() {
     var m Meters = Meters(km * 1000) // Convert Kilometers to Meters
     fmt.Printf("Kilometers to Meters: %T(%v) -> %T(%v)\n", km, km, m, m) // main.Kilometers(10) -> main.Meters(10000)
 
-    var speedMS Meters = 100
-    var speedKMH Kilometers = Kilometers(float64(speedMS) / 1000 * 3.6) // Complex conversion involving float
-    fmt.Printf("Meters to Kilometers: %T(%v) -> %T(%T(%v)) -> %T(%v)\n", speedMS, speedMS, float64(speedMS), speedMS, speedKMH, speedKMH)
-    // main.Meters(100) -> float64(100) -> main.Kilometers(0) (due to int truncation later if not careful with float)
-    // Let's refine the speed conversion for clarity
-    var msVal float64 = float64(speedMS)
-    var kmhVal float64 = msVal / 1000 * 3.6
-    var finalKPH Kilometers = Kilometers(kmhVal) // This will truncate
-    fmt.Printf("Meters to Kilometers (more steps): %T(%v) -> %T(%v)\n", speedMS, speedMS, finalKPH, finalKPH)
-    // Output for 100 m/s is 360 km/h. If we use Kilometers(360.0), it's 360.
-    // If the expression evaluates to something like 0.36, and we convert to Kilometers (int), it truncates to 0.
+    var dist Meters = 2500
+    km2 := Kilometers(dist / 1000) // integer division first: 2500 / 1000 = 2
+    fmt.Printf("Meters to Kilometers: %T(%v) -> %T(%v)\n", dist, dist, km2, km2) // main.Meters(2500) -> main.Kilometers(2)
+
+    kmF := float64(dist) / 1000 // convert to float64 first to keep the fraction
+    fmt.Printf("Meters to km (float): %T(%v) -> %T(%v)\n", dist, dist, kmF, kmF) // main.Meters(2500) -> float64(2.5)
 }
 ```
 

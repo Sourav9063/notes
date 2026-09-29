@@ -1,4 +1,4 @@
-## A Practical Guide to Hexagonal Architecture in Golang
+# A Practical Guide to Hexagonal Architecture in Golang
 
 Hexagonal Architecture, also known as the Ports and Adapters pattern, is a software design principle that promotes creating loosely coupled application components. This architectural style enhances maintainability, testability, and the ability to evolve your application's technology stack without impacting its core business logic. This guide provides a clear code example in Golang, adhering to best practices, to illustrate the core concepts of this powerful architecture.
 
@@ -259,12 +259,12 @@ import (
 	"log"
 	"net/http"
 
-	"your_project/internal/adapters/http_adapter"
+	http_adapter "your_project/internal/adapters/http" // aliased: package http clashes with net/http
 	"your_project/internal/adapters/inmem"
 	"your_project/internal/core/service"
 
 	"github.com/go-chi/chi/v5"
-	"github.comcom/go-chi/chi/v5/middleware"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
