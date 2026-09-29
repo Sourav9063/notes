@@ -25,13 +25,17 @@ export interface QueryStateOptions {
   shallow?: boolean;
 }
 
+// Global state for batching URL updates to prevent race conditions
+let batchedParams: URLSearchParams | null = null;
+let batchTimeout: ReturnType<typeof setTimeout> | null = null;
+
 /**
  * Hook for managing a single URL query parameter in Next.js App Router
  * Works similarly to useState but syncs with URL query parameters
  *
  * @param key - The query parameter key
  * @param defaultValue - Default value when query parameter is not present
- * @param options - Navigation options (replace, scroll)
+ * @param options - Navigation options (replace, scroll, shallow)
  *
  * @example
  * ```tsx
@@ -40,8 +44,8 @@ export interface QueryStateOptions {
  *   const [page, setPage] = useQueryState("page", "1");
  *   const [tab, setTab] = useQueryState<"items" | "category">("tab", "items");
  *
- *   // Get the query parameter value (typed)
- * // string
+ *   // Read the value like state; `tab` is typed "items" | "category"
+ *   console.log(search, page, tab);
  *
  *   // Set the query parameter
  *   setSearch("hello");
@@ -51,10 +55,6 @@ export interface QueryStateOptions {
  * }
  * ```
  */
-// Global state for batching URL updates to prevent race conditions
-let batchedParams: URLSearchParams | null = null;
-let batchTimeout: ReturnType<typeof setTimeout> | null = null;
-
 export function useQueryState<T extends string = string>(
   key: string,
   defaultValue: T,
