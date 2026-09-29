@@ -150,6 +150,7 @@ Modern Vue.js development resources and guides.
 
 #### State Management
 - [Pinia Guide](vue/pinia/README.md) - Modern state management for Vue
+- [Vuex Modular Store](vue/vuex/modular-store.md) - Vuex modules with shared base helpers
 
 #### UI Components
 - [PrimeVue Documentation](vue/primevue/README.md) - Vue UI component library
@@ -220,8 +221,7 @@ Large Language Model resources and guides.
 Additional development resources and articles.
 
 - [Development Articles](misc/article.md) - Programming articles and insights
-- [Loop Patterns](misc/loop.md) - Common loop patterns across languages
-- [Map Data Structures](misc/map.md) - Understanding map/dictionary structures
+- [Google Maps `pb` Parameter](misc/google-maps-pb-parameter.md) - Decoding the Google Maps `pb` URL parameter
 
 ---
 
