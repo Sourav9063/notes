@@ -39,6 +39,8 @@ Unlike simple property assignment (e.g., `obj.prop = value`), which implicitly c
 **Code Example:**
 
 ```js
+'use strict'; // without strict mode, the failed writes below are silently ignored instead of throwing
+
 const product = {};
 
 // 1. Creating a non-writable (read-only) data property
@@ -230,34 +232,34 @@ A crucial aspect of this model is `this` binding: when an inherited function (of
 **Code Example:**
 
 ```js
+const animal = {
+  eats: true,
+  walk() {
+    console.log(`${this.name || 'Animal'} walks.`);
+  },
+};
 
-    const animal = {
-      eats: true,
-      walk() {
-        console.log(`${this.name |
-    | 'Animal'} walks.`);
-      }
-    };
+const rabbit = {
+  jumps: true,
+  name: 'Rabbit',
+  __proto__: animal, // rabbit inherits from animal
+};
 
-    const rabbit = {
-      jumps: true,
-      name: 'Rabbit',
-      __proto__: animal // rabbit inherits from animal
-    };
+rabbit.walk(); // Rabbit walks. (method inherited from animal, 'this' refers to rabbit)
+console.log(rabbit.eats); // true (property inherited)
 
-    rabbit.walk(); // Rabbit walks. (method inherited from animal, 'this' refers to rabbit)
-    console.log(rabbit.eats); // true (property inherited)
+const longEar = {
+  earLength: 10,
+  name: 'Long Ear',
+  __proto__: rabbit, // longEar inherits from rabbit, forming a chain
+};
 
-    const longEar = {
-      earLength: 10,
-      name: 'Long Ear',
-      __proto__: rabbit // longEar inherits from rabbit, forming a chain
-    };
-
-    longEar.walk(); // Long Ear walks.
-    console.log(longEar.eats); // true
-    console.log(longEar.jumps); // true
+longEar.walk(); // Long Ear walks.
+console.log(longEar.eats); // true
+console.log(longEar.jumps); // true
 ```
+
+> `__proto__` in an object literal is standard syntax for setting the prototype. The `obj.__proto__` accessor is legacy; use `Object.getPrototypeOf()` / `Object.setPrototypeOf()` instead.
 
 It is worth noting that JavaScript's `class` keyword, introduced in ES6, is primarily syntactic sugar over this existing prototypal inheritance model. While classes offer a more familiar and structured syntax for defining constructor functions and their associated prototype methods, a deep understanding of the underlying prototype chain is essential for effective debugging of class-based code and for leveraging the full capabilities of JavaScript's object system when necessary, such as by directly manipulating prototypes or using `Object.create()`.
 
@@ -380,65 +382,72 @@ This method "freezes" an object, representing the highest level of integrity pro
 **Code Example:**
 
 ```js
+'use strict';
 
-    const appState = {
-      user: { name: 'Alice', id: 1 },
-      data:
-    };
+const appState = {
+  user: { name: 'Alice', id: 1 },
+  data: [],
+};
 
-    Object.freeze(appState);
-    console.log(Object.isFrozen(appState)); // true
-    console.log(Object.isSealed(appState)); // true (frozen implies sealed)
-    console.log(Object.isExtensible(appState)); // false (frozen implies non-extensible)
+Object.freeze(appState);
+console.log(Object.isFrozen(appState)); // true
+console.log(Object.isSealed(appState)); // true (frozen implies sealed)
+console.log(Object.isExtensible(appState)); // false (frozen implies non-extensible)
 
-    appState.version = '2.0'; // Fails silently or throws TypeError
-    appState.user.name = 'Bob'; // ALLOWED - nested object is NOT frozen
-    appState.data.push(1);     // ALLOWED - nested array is NOT frozen
+try {
+  appState.version = '2.0'; // TypeError in strict mode (silently ignored otherwise)
+} catch (e) {
+  console.log(`Error: ${e.message}`); // Cannot add property version, object is not extensible
+}
+appState.user.name = 'Bob'; // ALLOWED - nested object is NOT frozen
+appState.data.push(1); // ALLOWED - nested array is NOT frozen
 
-    console.log(appState.user.name); // Bob
-    console.log(appState.data);     //
+console.log(appState.user.name); // Bob
+console.log(appState.data);
 
-    // Deep Freeze Example (requires a recursive function)
-    function deepFreeze(obj) {
-      const propNames = Reflect.ownKeys(obj); // Get all own property keys (including Symbols) [13]
-      for (const name of propNames) {
-        const value = obj[name];
-        // Recursively freeze nested objects/functions
-        if ((value && typeof value === 'object') |
-    | typeof value === 'function') {
-          deepFreeze(value);
-        }
-      }
-      return Object.freeze(obj); // Freeze the current object [13]
+// Deep freeze (recursive)
+function deepFreeze(obj) {
+  for (const key of Reflect.ownKeys(obj)) { // all own keys, including Symbols
+    const value = obj[key];
+    if ((value && typeof value === 'object') || typeof value === 'function') {
+      deepFreeze(value);
     }
+  }
+  return Object.freeze(obj);
+}
 
-    const deepAppState = {
-      user: { name: 'Alice', id: 1 },
-      data:
-    };
-    deepFreeze(deepAppState);
+const deepAppState = {
+  user: { name: 'Alice', id: 1 },
+  data: [],
+};
+deepFreeze(deepAppState);
 
-    try {
-      deepAppState.user.name = 'Bob'; // Throws TypeError in strict mode, fails silently otherwise
-    } catch (e) {
-      console.log(`Error: ${e.message}`); // Cannot assign to read only property 'name'
-    }
-    try {
-      deepAppState.data.push(1);     // Throws TypeError in strict mode, fails silently otherwise
-    } catch (e) {
-      console.log(`Error: ${e.message}`); // Cannot add property 0, object is not extensible
-    }
-    console.log(deepAppState.user.name); // Alice
-    console.log(deepAppState.data);     //
+try {
+  deepAppState.user.name = 'Bob';
+} catch (e) {
+  console.log(`Error: ${e.message}`); // Cannot assign to read only property 'name' of object
+}
+try {
+  deepAppState.data.push(1);
+} catch (e) {
+  console.log(`Error: ${e.message}`); // Cannot add property 0, object is not extensible
+}
+console.log(deepAppState.user.name); // Alice
+console.log(deepAppState.data); // []
 ```
+
+> This `deepFreeze` does not handle circular references. Track visited objects with a `WeakSet` if the graph can contain cycles.
 
 The ability to choose between `preventExtensions`, `seal`, and `freeze` offers a clear spectrum of immutability levels. `preventExtensions` is useful for preventing accidental additions to a configuration object. `seal` is for objects where the set of properties is fixed, but their values can still change (e.g., a mutable state object with fixed keys). `freeze` is for truly constant data structures. Understanding this gradient is crucial for selecting the right tool for the job, balancing flexibility with data integrity.
 
 ### Object Integrity Methods Comparison
 
-<div class="horizontal-scroll-wrapper">
-<div class="table-block-component"><response-element class="" ng-version="0.0.0-PLACEHOLDER"><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><table-block _nghost-ng-c3734718589="" class="ng-star-inserted"><div _ngcontent-ng-c3734718589="" class="table-block has-export-button"><div _ngcontent-ng-c3734718589="" not-end-of-paragraph="" class="table-content not-end-of-paragraph"><table data-sourcepos="429:1-433:68"><tbody><tr data-sourcepos="429:1-429:184"><th data-sourcepos="429:1-429:8" align="left">Method</th><th data-sourcepos="429:10-429:26" align="left">New Properties?</th><th data-sourcepos="429:28-429:59" align="left">Existing Properties Deletable?</th><th data-sourcepos="429:61-429:96" align="left">Existing Data Properties Writable?</th><th data-sourcepos="429:98-429:132" align="left">Existing Properties Configurable?</th><th data-sourcepos="429:134-429:166" align="left">Affects Prototype Reassignment?</th><th data-sourcepos="429:168-429:182" align="left">Shallow/Deep?</th></tr><tr data-sourcepos="431:1-431:82"><td data-sourcepos="431:1-431:30" align="left"><code>Object.preventExtensions()</code></td><td data-sourcepos="431:32-431:35" align="left">No</td><td data-sourcepos="431:37-431:41" align="left">Yes</td><td data-sourcepos="431:43-431:47" align="left">Yes</td><td data-sourcepos="431:49-431:53" align="left">Yes</td><td data-sourcepos="431:55-431:70" align="left">Yes (prevents)</td><td data-sourcepos="431:72-431:80" align="left">Shallow</td></tr><tr data-sourcepos="432:1-432:67"><td data-sourcepos="432:1-432:17" align="left"><code>Object.seal()</code></td><td data-sourcepos="432:19-432:22" align="left">No</td><td data-sourcepos="432:24-432:27" align="left">No</td><td data-sourcepos="432:29-432:33" align="left">Yes</td><td data-sourcepos="432:35-432:38" align="left">No</td><td data-sourcepos="432:40-432:55" align="left">Yes (prevents)</td><td data-sourcepos="432:57-432:65" align="left">Shallow</td></tr><tr data-sourcepos="433:1-433:68"><td data-sourcepos="433:1-433:19" align="left"><code>Object.freeze()</code></td><td data-sourcepos="433:21-433:24" align="left">No</td><td data-sourcepos="433:26-433:29" align="left">No</td><td data-sourcepos="433:31-433:34" align="left">No</td><td data-sourcepos="433:36-433:39" align="left">No</td><td data-sourcepos="433:41-433:56" align="left">Yes (prevents)</td><td data-sourcepos="433:58-433:66" align="left">Shallow</td></tr></tbody></table></div><div _ngcontent-ng-c3734718589="" hide-from-message-actions="" class="table-footer hide-from-message-actions ng-star-inserted"></div><!----></div></table-block><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----></response-element></div>
-</div>
+| Method | New Properties? | Existing Properties Deletable? | Existing Data Properties Writable? | Existing Properties Configurable? | Prototype Reassignment? | Shallow/Deep? |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `Object.preventExtensions()` | No | Yes | Yes | Yes | Prevented | Shallow |
+| `Object.seal()` | No | No | Yes | No | Prevented | Shallow |
+| `Object.freeze()` | No | No | No | No | Prevented | Shallow |
+
 This table concisely summarizes the distinct behaviors of each immutability method. It provides a quick reference for choosing the correct method based on the desired level of object integrity. The "Shallow/Deep?" column specifically addresses the common `Object.freeze` misconception, reinforcing the need for deep freezing when full immutability is required.
 
 ## Metaprogramming with Proxies and Reflect
@@ -447,7 +456,7 @@ Metaprogramming involves writing code that can inspect, modify, or generate othe
 
 ### Introduction to `Proxy` and `Reflect`
 
-- **`Proxy` Object:** A `Proxy` object enables the creation of a stand-in for another object, known as the `target`. This proxy can intercept and redefine fundamental object operations. The `target` object often serves as the underlying storage backend for the proxy. The `handler` object, passed to the `Proxy` constructor, defines which operations will be intercepted and how they will be redefined. The functions within the `handler` are often referred to as "traps" because they "trap" calls to the `target` object. A key aspect is that `Proxy` objects can intercept _internal_ object operations (like `[[Get]]`, `]`, `]`, `[[Construct]]`), which goes beyond what traditional getters and setters can achieve. This deep interception capability allows for powerful metaprogramming, where the behavior of the language itself can be customized for specific objects, opening doors for building highly dynamic and reflective systems.
+- **`Proxy` Object:** A `Proxy` object enables the creation of a stand-in for another object, known as the `target`. This proxy can intercept and redefine fundamental object operations. The `target` object often serves as the underlying storage backend for the proxy. The `handler` object, passed to the `Proxy` constructor, defines which operations will be intercepted and how they will be redefined. The functions within the `handler` are often referred to as "traps" because they "trap" calls to the `target` object. A key aspect is that `Proxy` objects can intercept _internal_ object operations (like `[[Get]]`, `[[Set]]`, `[[Call]]`, `[[Construct]]`), which goes beyond what traditional getters and setters can achieve. This deep interception capability allows for powerful metaprogramming, where the behavior of the language itself can be customized for specific objects, opening doors for building highly dynamic and reflective systems.
 - **`Reflect` Object:** `Reflect` is a built-in object that provides methods for interceptable JavaScript operations. Its methods are identical to the traps found in the `Proxy` handler. `Reflect` is not a function object. Its primary utility lies in forwarding default operations from a proxy handler to its `target`. The `Reflect` API is crucial when using `Proxy` objects, as it provides the default behavior for internal methods, allowing traps to _augment_ rather than completely _redefine_ behavior. For instance, `Reflect.get(target, prop, receiver)` allows a proxy trap to perform the original property lookup and then add custom logic around it (e.g., logging before returning the value). This pattern of "intercept and then reflect" is fundamental for building non-intrusive and robust proxy-based solutions, ensuring that the core object behavior is preserved while custom logic is injected.
 
 **Syntax:** `new Proxy(target, handler)`.
@@ -463,7 +472,7 @@ The `handler` object can define various traps to intercept different operations:
 ```js
 const defaultHandler = {
   get(target, name) {
-    return name in target ? Reflect.get(target, name) : 'N/A'; // Use Reflect for default behavior [14]
+    return name in target ? Reflect.get(target, name) : 'N/A'; // Use Reflect for default behavior
   },
 };
 const userProfile = new Proxy({ name: 'Jane Doe' }, defaultHandler);
@@ -512,7 +521,7 @@ const loggingHandler = {
       `Calling function "${target.name}" with arguments:`,
       argumentsList
     );
-    return Reflect.apply(target, thisArg, argumentsList); // [14]
+    return Reflect.apply(target, thisArg, argumentsList);
   },
 };
 const proxiedSum = new Proxy(sum, loggingHandler);
@@ -533,7 +542,7 @@ class Product {
 const constructorHandler = {
   construct(target, argumentsList, newTarget) {
     console.log('Intercepting new Product() call...');
-    const instance = Reflect.construct(target, argumentsList, newTarget); // [14]
+    const instance = Reflect.construct(target, argumentsList, newTarget);
     instance.createdAt = new Date(); // Add extra property
     return instance;
   },
@@ -667,9 +676,12 @@ myObject[internalId] = 'abc-123';
 myObject[debugFlag] = true;
 
 const symbols = Object.getOwnPropertySymbols(myObject);
-console.log(symbols); //
-console.log(symbols.length); // 2 [18]
-console.log(myObject[symbols]); // abc-123
+console.log(symbols); // [Symbol(internalId), Symbol(debugFlag)]
+console.log(symbols.length); // 2
+console.log(myObject[symbols[0]]); // abc-123
+
+// Reflect.ownKeys returns string and Symbol keys together
+console.log(Reflect.ownKeys(myObject)); // ['name', Symbol(internalId), Symbol(debugFlag)]
 ```
 
 ## Advanced Object Creation and Manipulation
@@ -738,6 +750,7 @@ console.log(original.nested.b); // 4 (original affected by shallowCopySpread)
 - **Deep Copy Methods:** These methods create a completely independent copy of an object, including all nested objects and arrays, ensuring that modifications to the copy do not affect the original. The distinction between shallow and deep copies is fundamental for avoiding subtle bugs when manipulating objects, especially those with nested structures. A common pitfall for JavaScript developers is assuming that `Object.assign` or the spread operator creates a completely independent copy of an object. This can lead to unexpected side effects where modifying the "copy" inadvertently changes the "original." Understanding this distinction is crucial for data integrity.
 
   - **`JSON.parse(JSON.stringify(obj))`:** This is a simple method for deep copying objects that are JSON-serializable. However, it has significant limitations: it cannot handle functions, `Date` objects, `undefined` values, `Symbol` values, `BigInt` values, or circular references, as these are not part of the JSON standard.
+  - **`structuredClone(obj)`:** Built into browsers and Node.js 17+. Deep copies `Date`, `Map`, `Set`, `RegExp`, typed arrays, and circular references. It throws on functions and DOM nodes, and does not preserve prototypes (class instances become plain objects).
   - **Libraries (e.g., Lodash `_.cloneDeep()`):** For complex deep cloning scenarios, especially those involving non-JSON-serializable data types or circular references, using dedicated libraries like Lodash is highly recommended. The limitations of `JSON.parse(JSON.stringify())` for deep copies highlight that achieving full deep cloning often requires specialized tools, reinforcing the need for careful consideration of data structure when copying.
 
 **Code Example:**
@@ -747,9 +760,13 @@ const original = { a: 1, nested: { b: 2 }, func: () => {}, date: new Date() };
 const deepCopyJSON = JSON.parse(JSON.stringify(original)); // func and date will be lost/transformed
 
 deepCopyJSON.nested.b = 5;
-console.log(original.nested.b); // 4 (not affected by deepCopyJSON changes)
+console.log(original.nested.b); // 2 (not affected by deepCopyJSON changes)
 console.log(deepCopyJSON.func); // undefined
 console.log(deepCopyJSON.date); // String representation of date, not Date object
+
+const { func, ...cloneable } = original; // structuredClone throws on functions
+const deepCopy = structuredClone(cloneable);
+console.log(deepCopy.date instanceof Date); // true
 ```
 
 ### `Object.fromEntries()`: Transforming Data
@@ -761,24 +778,26 @@ console.log(deepCopyJSON.date); // String representation of date, not Date objec
 **Code Example:**
 
 ```js
+const map = new Map([
+  ['name', 'Alice'],
+  ['age', 30],
+]);
+const objFromMap = Object.fromEntries(map);
+console.log(objFromMap); // { name: 'Alice', age: 30 }
 
-    const map = new Map(['name', 'Alice'],
-      ['age', 30]);
-    const objFromMap = Object.fromEntries(map);
-    console.log(objFromMap); // { name: 'Alice', age: 30 }
+const arrOfPairs = [
+  ['city', 'New York'],
+  ['zip', '10001'],
+];
+const objFromArray = Object.fromEntries(arrOfPairs);
+console.log(objFromArray); // { city: 'New York', zip: '10001' }
 
-    const arrOfPairs = ['city', 'New York'],
-      ['zip', '10001'];
-    const objFromArray = Object.fromEntries(arrOfPairs);
-    console.log(objFromArray); // { city: 'New York', zip: '10001' }
-
-    // Object transformation pipeline: double product prices
-    const productPrices = { laptop: 1200, keyboard: 75, mouse: 25 };
-    const doubledPrices = Object.fromEntries(
-      Object.entries(productPrices)
-       .map(([key, value]) => [key, value * 2]) // Apply 100% increase
-    );
-    console.log(doubledPrices); // { laptop: 2400, keyboard: 150, mouse: 50 }
+// Object transformation pipeline: double product prices
+const productPrices = { laptop: 1200, keyboard: 75, mouse: 25 };
+const doubledPrices = Object.fromEntries(
+  Object.entries(productPrices).map(([key, value]) => [key, value * 2])
+);
+console.log(doubledPrices); // { laptop: 2400, keyboard: 150, mouse: 50 }
 ```
 
 ### Destructuring Objects: Advanced Techniques and Tips
@@ -843,7 +862,7 @@ JavaScript's flexible object model allows for the effective implementation of va
 
 ```js
 const Calculator = (function () {
-  let result = 0; // Private variable [28]
+  let result = 0; // Private variable
 
   function add(num) {
     // Private method
@@ -884,13 +903,13 @@ console.log(Calculator.result); // undefined (private and inaccessible)
 ```js
 const CanFly = {
   fly() {
-    console.log(`${this.name} is flying!`); // [30]
+    console.log(`${this.name} is flying!`);
   },
 };
 
 const CanSwim = {
   swim() {
-    console.log(`${this.name} is swimming!`); // [30]
+    console.log(`${this.name} is swimming!`);
   },
 };
 
@@ -901,7 +920,7 @@ class Bird {
 }
 
 // Add flying behavior to Bird prototype
-Object.assign(Bird.prototype, CanFly); // [30, 31]
+Object.assign(Bird.prototype, CanFly);
 
 const eagle = new Bird('Eagle');
 eagle.fly(); // Eagle is flying!
@@ -933,7 +952,7 @@ class FanState {
   }
 }
 
-// Concrete States [34]
+// Concrete States
 class OffFanState extends FanState {
   clickButton() {
     console.log('Fan: Turning on to Low Speed.');
@@ -962,7 +981,7 @@ class HighSpeedFanState extends FanState {
   }
 }
 
-// Context [34]
+// Context
 class Fan {
   constructor() {
     this.offFanState = new OffFanState(this);
