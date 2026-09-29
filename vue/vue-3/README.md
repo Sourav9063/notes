@@ -6,7 +6,7 @@
 
 - **Purpose**: Entry point for Composition API logic
 - **Replaces**: `data()`, `methods`, `computed`, and lifecycle hooks
-- **Auto-Exposure**: Returned values are template-accessible
+- **Auto-Exposure**: In `<script setup>`, top-level bindings are template-accessible (with `setup()`, return them)
 
 ```vue
 <script setup>
@@ -74,12 +74,13 @@ watch(
 
 ### watchEffect()
 
-- **Use When**: Immediate reactive dependency tracking
-- **Cleanup**: Automatic on unmount
+- **Use When**: Run immediately and re-run when any reactive value it reads changes
+- **Cleanup**: Automatic on unmount (when created synchronously in setup)
+- **Note**: Only reactive reads are tracked; `window.innerWidth` would never trigger a re-run
 
 ```javascript
 const stop = watchEffect(() => {
-  console.log('Window width:', window.innerWidth);
+  console.log('Count:', count.value);
 });
 // Manually stop
 stop();
@@ -105,8 +106,8 @@ watchPostEffect(() => {
   - `onMounted` → `mounted`
   - `onBeforeUpdate` → `beforeUpdate`
   - `onUpdated` → `updated`
-  - `onBeforeUnmount` → `beforeDestroy`
-  - `onUnmounted` → `destroyed`
+  - `onBeforeUnmount` → `beforeUnmount` (Vue 2: `beforeDestroy`)
+  - `onUnmounted` → `unmounted` (Vue 2: `destroyed`)
 
 ```javascript
 import { onMounted, onUnmounted } from 'vue';
@@ -220,6 +221,61 @@ function onSubmit() {
 }
 ```
 
+### v-model Binding
+- **Two-Way Binding**: Syntactic sugar for prop + emit
+- **Multiple v-models**: Bind multiple model values (`defineModel('name')` in the child)
+
+```vue
+<!-- CustomInput.vue (Vue 3.4+) -->
+<script setup>
+const model = defineModel(); // prop `modelValue` + `update:modelValue` emit
+</script>
+<template>
+  <input v-model="model" />
+</template>
+
+<!-- CustomInput.vue (before 3.4) -->
+<input
+  :value="modelValue"
+  @input="$emit('update:modelValue', $event.target.value)"
+>
+
+<!-- Parent Usage -->
+<CustomInput v-model="text" />
+<UserForm v-model:name="userName" v-model:email="userEmail" />
+```
+
+### Slots
+
+#### Default Slot
+```vue
+<!-- Child -->
+<slot>Fallback Content</slot>
+
+<!-- Parent -->
+<Child>Main Content</Child>
+```
+
+#### Named Slots
+```vue
+<!-- Child -->
+<slot name="header"></slot>
+
+<!-- Parent -->
+<template #header>Page Title</template>
+```
+
+#### Scoped Slots
+```vue
+<!-- Child -->
+<slot :item="item" name="item"></slot>
+
+<!-- Parent -->
+<template #item="{ item }">
+  <span>{{ item.name }}</span>
+</template>
+```
+
 ### provide/inject
 
 - **Use Case**: Cross-component dependency injection
@@ -237,6 +293,8 @@ provide(
 // Descendant
 const userData = inject('userData', defaultValue);
 ```
+
+Provide a `ref`/`reactive` to keep the injected value reactive.
 
 ---
 
@@ -303,6 +361,43 @@ onMounted(() => emailInput.value.focus());
 </script>
 ```
 
+Vue 3.5+: `const emailInput = useTemplateRef('emailInput')`.
+
+### Component Refs
+
+```vue
+<!-- Child.vue: <script setup> components are closed by default -->
+<script setup>
+function reset() {}
+defineExpose({ reset });
+</script>
+
+<!-- Parent.vue -->
+<Child ref="childRef" />
+<script setup>
+const childRef = ref(null);
+// childRef.value.reset()
+</script>
+```
+
+### v-for Refs
+
+```vue
+<li v-for="item in list" ref="itemRefs">{{ item }}</li>
+<script setup>
+const itemRefs = ref([]); // filled with elements; order not guaranteed
+</script>
+```
+
+### Function Refs
+
+```vue
+<input :ref="(el) => { dynamicRef = el }">
+<script setup>
+const dynamicRef = ref(null);
+</script>
+```
+
 ### Custom Directives
 
 ```javascript
@@ -315,8 +410,12 @@ const vHighlight = {
   }
 }
 
-// Usage
+// Usage (any `vCamelCase` variable in <script setup> is a directive)
 <div v-highlight="'#ff0'"></div>
+
+const vFocus = {
+  mounted: (el) => el.focus(),
+};
 ```
 
 ---
@@ -331,16 +430,16 @@ const AsyncComp = defineAsyncComponent(() => import('./components/AsyncComponent
 
 ### Async Setup
 
-```javascript
-async function setup() {
-  const data = await fetchData()
-  return { data }
-}
+```vue
+<!-- AsyncComponent.vue: top-level await makes setup async -->
+<script setup>
+const data = await fetchData();
+</script>
 
-// With Suspense boundary
+<!-- Parent: an async setup component needs a Suspense ancestor -->
 <Suspense>
-  <template #default> <AsyncComponent /> </template>
-  <template #fallback> Loading... </template>
+  <template #default><AsyncComponent /></template>
+  <template #fallback>Loading...</template>
 </Suspense>
 ```
 
@@ -393,10 +492,10 @@ scope.stop(); // Cleans both effects
 ```javascript
 import { useSSRContext } from 'vue';
 
-// Server-side only
+// Server-side only: ctx is the object passed to renderToString(app, ctx)
 if (import.meta.env.SSR) {
   const ctx = useSSRContext();
-  ctx.head += '<title>SSR Page</title>';
+  ctx.title = 'SSR Page'; // read it after rendering to build <head>
 }
 ```
 
@@ -559,6 +658,8 @@ const instance = getCurrentInstance();
 console.log('Component instance:', instance);
 ```
 
+`getCurrentInstance` is an internal API: use it for debugging or library code, not app logic. Prefer Vue DevTools.
+
 ---
 
 ## 🧪 Testing Utilities
@@ -576,138 +677,18 @@ test('renders message', async () => {
 
 ### Composables Testing
 
+Composables that only use reactivity APIs can be called directly:
+
 ```javascript
-import { renderHook } from '@testing-library/vue';
-
-test('useCounter', async () => {
-  const { result } = renderHook(() => useCounter());
-  expect(result.value.count).toBe(0);
-  result.value.increment();
-  expect(result.value.count).toBe(1);
-});
-```
-Here's the expanded cheatsheet with added sections for slots, refs enhancements, and related features:
-
----
-
-## 📤📥 Component Communication
-
-### Props
-```javascript
-const props = defineProps({
-  title: {
-    type: String,
-    required: true
-  }
+test('useCounter', () => {
+  const { count, increment } = useCounter();
+  expect(count.value).toBe(0);
+  increment();
+  expect(count.value).toBe(1);
 });
 ```
 
-### Emits
-```javascript
-const emit = defineEmits(['submit']);
-function handleSubmit() {
-  emit('submit', { data: 123 });
-}
-```
-
-### v-model Binding
-- **Two-Way Binding**: Syntactic sugar for prop + emit
-- **Multiple v-models**: Bind multiple model values
-
-```vue
-<!-- CustomInput.vue -->
-<input
-  :value="modelValue"
-  @input="$emit('update:modelValue', $event.target.value)"
->
-
-<!-- Parent Usage -->
-<CustomInput v-model="text" />
-<UserForm v-model:name="userName" v-model:email="userEmail" />
-```
-
-### Slots
-
-#### Default Slot
-```vue
-<!-- Child -->
-<slot>Fallback Content</slot>
-
-<!-- Parent -->
-<Child>Main Content</Child>
-```
-
-#### Named Slots
-```vue
-<!-- Child -->
-<slot name="header"></slot>
-
-<!-- Parent -->
-<template #header>Page Title</template>
-```
-
-#### Scoped Slots
-```vue
-<!-- Child -->
-<slot :item="item" name="item"></slot>
-
-<!-- Parent -->
-<template #item="{ item }">
-  <span>{{ item.name }}</span>
-</template>
-```
-
-### provide/inject
-```javascript
-// Ancestor
-provide('key', ref('value'));
-
-// Descendant
-const value = inject('key');
-```
-
----
-
-## 🎛️ Template Refs & Directives
-
-### DOM Element Refs
-```vue
-<input ref="inputRef">
-<script setup>
-const inputRef = ref(null);
-</script>
-```
-
-### Component Refs
-```vue
-<Child ref="childRef" />
-<script setup>
-const childRef = ref(null);
-// Expose methods in child:
-defineExpose({ reset });
-</script>
-```
-
-### Dynamic v-for Refs
-```vue
-<div v-for="item in list" :ref="setItemRef"></div>
-<script setup>
-const itemRefs = ref([]);
-const setItemRef = el => { if (el) itemRefs.value.push(el) };
-</script>
-```
-
-### Function Refs
-```vue
-<input :ref="el => { dynamicRef = el }">
-```
-
-### Custom Directives
-```javascript
-const vFocus = {
-  mounted: el => el.focus()
-};
-```
+If the composable uses lifecycle hooks or `inject`, call it inside a host component (e.g. `mount` a component whose `setup` runs it).
 
 ---
 
@@ -761,12 +742,13 @@ const vFocus = {
 
 ### Ref Debouncing
 ```javascript
-const debouncedRef = useDebouncedRef('', 300);
+const debouncedRef = useDebouncedRef('', 300); // customRef example above
 ```
 
 ### DOM Measurements
 ```javascript
-useElementSize(elementRef);
+import { useElementSize } from '@vueuse/core';
+const { width, height } = useElementSize(elementRef);
 ```
 
 ---
