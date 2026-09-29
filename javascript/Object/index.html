@@ -500,8 +500,7 @@ N/A</div>
         throw new TypeError('Age must be a non-negative integer.');
       }
     }
-    Reflect.set(target, prop, value);
-    return true;
+    return Reflect.set(target, prop, value);
   }
 };
 const person = new Proxy({}, validationHandler);
@@ -651,11 +650,11 @@ shallowCopySpread.nested.b = 4;
 // console.log('Original (after spread):', originalShallow.nested.b);</code></pre>
                 <div class="console-output">Original (after assign): 3
 Original (after spread): 4</div>
-                <p><strong>Deep Copy:</strong> Creates a completely independent copy, including nested structures. <code>JSON.parse(JSON.stringify(obj))</code> is simple but limited (can't handle functions, Dates, undefined, Symbols, BigInts, circular refs). Libraries (e.g., Lodash <code>_.cloneDeep()</code>) are better for complex cases.</p>
+                <p><strong>Deep Copy:</strong> Creates a completely independent copy, including nested structures. <code>JSON.parse(JSON.stringify(obj))</code> is simple but limited (can't handle functions, Dates, undefined, Symbols, BigInts, circular refs). Prefer the built-in <code>structuredClone(obj)</code> (browsers, Node.js 17+): it copies Dates, Maps, Sets, and circular refs, but throws on functions and drops prototypes.</p>
                 <pre><code>const originalDeep = { a: 1, nested: { b: 2 }, func: () => {}, date: new Date() };
 const deepCopyJSON = JSON.parse(JSON.stringify(originalDeep));
 deepCopyJSON.nested.b = 5;
-// console.log('Original nested.b:', originalDeep.nested.b); // Should remain 4 from previous example if run sequentially, or 2 if isolated
+// console.log('Original nested.b:', originalDeep.nested.b); // 2
 // console.log('Deep copy func:', deepCopyJSON.func);
 // console.log('Deep copy date:', deepCopyJSON.date); // String representation</code></pre>
                 <div class="console-output">Original nested.b: 4 
