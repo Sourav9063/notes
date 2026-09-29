@@ -60,7 +60,7 @@ https://youtu.be/yE6tIle64tU
     - [Without WHERE Clause (Warning)](#without-where-clause-warning)
     - [Quick Quiz: Practice Your `UPDATE` Skills](#quick-quiz-practice-your-update-skills)
       - [1. Update the salary of user with `id = 5` to ₹70,000.](#1-update-the-salary-of-user-with-id--5-to-70000)
-      - [2. Change the name of the user with email `[[email protected]](/cdn-cgi/l/email-protection)` to `Aisha Khan`.](#2-change-the-name-of-the-user-with-email-emailprotectedcdn-cgilemail-protection-to-aisha-khan)
+      - [2. Change the name of the user with email `aisha@example.com` to `Aisha Khan`.](#2-change-the-name-of-the-user-with-email-aishaexamplecom-to-aisha-khan)
       - [3. Increase salary by ₹10,000 for all users whose salary is less than ₹60,000.](#3-increase-salary-by-10000-for-all-users-whose-salary-is-less-than-60000)
       - [4. Set the gender of user `Ishaan` to `Other`.](#4-set-the-gender-of-user-ishaan-to-other)
       - [5. Reset salary of all users to ₹50,000 (Careful - affects all rows).](#5-reset-salary-of-all-users-to-50000-careful---affects-all-rows)
@@ -524,7 +524,7 @@ This method **requires** you to provide values for **all columns in order**, exc
 
 ```sql
 INSERT INTO users VALUES
-(1, 'Alice', '[email protected]', 'Female', '1995-05-14', DEFAULT);
+(1, 'Alice', 'alice@example.com', 'Female', '1995-05-14', DEFAULT);
 ```
 
 
@@ -538,7 +538,7 @@ This method is safer and more readable. You only insert into specific columns.
 
 ```sql
 INSERT INTO users (name, email, gender, date_of_birth) VALUES
-('Bob', '[email protected]', 'Male', '1990-11-23');
+('Bob', 'bob@example.com', 'Male', '1990-11-23');
 ```
 
 
@@ -546,8 +546,8 @@ or for multiple rows:
 
 ```sql
 INSERT INTO users (name, email, gender, date_of_birth) VALUES
-('Bob', '[email protected]', 'Male', '1990-11-23'),
-('Charlie', '[email protected]', 'Other', '1988-02-17');
+('Bob', 'bob@example.com', 'Male', '1990-11-23'),
+('Charlie', 'charlie@example.com', 'Other', '1988-02-17');
 ```
 
 
@@ -559,9 +559,9 @@ The remaining columns like `id` (which is `AUTO_INCREMENT`) and `created_at` (wh
 
 ```sql
 INSERT INTO users (name, email, gender, date_of_birth) VALUES
-('Charlie', '[email protected]', 'Other', '1988-02-17'),
-('David', '[email protected]', 'Male', '2000-08-09'),
-('Eva', '[email protected]', 'Female', '1993-12-30');
+('Charlie', 'charlie@example.com', 'Other', '1988-02-17'),
+('David', 'david@example.com', 'Male', '2000-08-09'),
+('Eva', 'eva@example.com', 'Female', '1993-12-30');
 ```
 
 
@@ -754,7 +754,7 @@ This changes the name of the user with `id = 1` to "Alicia".
 
 ```sql
 UPDATE users
-SET name = 'Robert', email = '[email protected]'
+SET name = 'Robert', email = 'robert@example.com'
 WHERE id = 2;
 ```
 
@@ -786,12 +786,12 @@ WHERE id = 5;
 
 * * *
 
-#### 2\. Change the name of the user with email `[[email protected]](/cdn-cgi/l/email-protection)` to `Aisha Khan`.
+#### 2\. Change the name of the user with email `aisha@example.com` to `Aisha Khan`.
 
 ```sql
 UPDATE users
 SET name = 'Aisha Khan'
-WHERE email = '[email protected]';
+WHERE email = 'aisha@example.com';
 ```
 
 
@@ -1820,10 +1820,10 @@ CREATE TABLE admin_users (
 
 ```sql
 INSERT INTO admin_users (id, name, email, gender, date_of_birth, salary) VALUES
-(101, 'Anil Kumar', '[email protected]', 'Male', '1985-04-12', 60000),
-(102, 'Pooja Sharma', '[email protected]', 'Female', '1992-09-20', 58000),
-(103, 'Rakesh Yadav', '[email protected]', 'Male', '1989-11-05', 54000),
-(104, 'Fatima Begum', '[email protected]', 'Female', '1990-06-30', 62000);
+(101, 'Anil Kumar', 'anil@example.com', 'Male', '1985-04-12', 60000),
+(102, 'Pooja Sharma', 'pooja@example.com', 'Female', '1992-09-20', 58000),
+(103, 'Rakesh Yadav', 'rakesh@example.com', 'Male', '1989-11-05', 54000),
+(104, 'Fatima Begum', 'fatima@example.com', 'Female', '1990-06-30', 62000);
 ```
 
 
@@ -2146,7 +2146,7 @@ CREATE INDEX idx_email ON users(email);
 *   Improves performance of queries like:
 
 ```sql
-SELECT * FROM users WHERE email = '[email protected]';
+SELECT * FROM users WHERE email = 'alice@example.com';
 ```
 
 
@@ -2511,7 +2511,7 @@ This creates a procedure named `AddUser` that accepts five input parameters.
 You can call the procedure using:
 
 ```sql
-CALL AddUser('Kiran Sharma', '[email protected]', 'Female', '1994-06-15', 72000);
+CALL AddUser('Kiran Sharma', 'kiran@example.com', 'Female', '1994-06-15', 72000);
 ```
 
 
@@ -2637,7 +2637,7 @@ DELIMITER ;
 ### Step 3: Test the Trigger
 
 ```sql
-CALL AddUser('Ritika Jain', '[email protected]', 'Female', '1996-03-12', 74000);
+CALL AddUser('Ritika Jain', 'ritika@example.com', 'Female', '1996-03-12', 74000);
 ```
 
 
