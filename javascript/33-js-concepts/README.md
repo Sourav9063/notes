@@ -1,4 +1,7 @@
 [https://github.com/leonardomso/33-js-concepts](https://github.com/leonardomso/33-js-concepts)
+
+> Snapshot of the original reading-list README. Upstream has since moved the content to a docs site: [33jsconcepts.com](https://33jsconcepts.com) (upstream `16d0d95`, 2026-06-06).
+
 <h1 align="center">
 <br>
   <a href="https://github.com/leonardomso/33"><img src="https://i.imgur.com/dsHmk6H.jpg" alt="33 Concepts Every JS Developer Should Know" width=200" /></a>
