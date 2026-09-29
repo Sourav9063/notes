@@ -1,3 +1,5 @@
+# pip `externally-managed-environment` error
+
 The "externally-managed-environment" error you're seeing when using `pip` is a safety measure to prevent you from accidentally breaking your system's core Python installation. This error is common on certain Linux distributions, particularly Debian-based ones like Ubuntu, that use a **system-wide Python** managed by the operating system's package manager (`apt`).
 
 ### Why It Happens
@@ -17,6 +19,8 @@ Here are the steps to create and use a virtual environment:
     ```bash
     python3 -m venv venv
     ```
+
+    On Debian/Ubuntu, install the module first if it is missing: `sudo apt install python3-venv`.
 
     This command creates a new directory named `venv` (you can name it whatever you want) in your current project folder. This directory will contain the virtual environment's Python interpreter and its own `pip` tool.
 
@@ -52,3 +56,5 @@ Here are the steps to create and use a virtual environment:
     This will return you to your system's regular command prompt.
 
 By using a virtual environment, you ensure that your project's dependencies are separate from your system's, preventing potential conflicts and keeping your system stable.
+
+For standalone CLI tools (e.g. `black`, `httpie`), use `pipx install <tool>`: it gives each tool its own virtual environment. Avoid `pip install --break-system-packages` unless you accept the risk to OS tools.
