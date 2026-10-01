@@ -11,6 +11,7 @@ Open [`index.html`](index.html) for a searchable browser that renders every trac
 ### 🐹 Go
 - [Effective Go](go/Effective-Go/README.md) - Official Go best practices and idioms ([বাংলা](go/Effective-Go/README_bn.md))
 - [Go for Node.js Developers](go/golang-for-nodejs-developers/README.md) - Side-by-side Node.js and Go examples (upstream mirror)
+- [Go for Node.js Developers (Modern)](go/golang-for-nodejs-modern/README.md) - Verified Go 1.27 / Node.js 24 rewrite with generics, iterators, context, slog, testing
 - [Hexagonal Architecture](go/design-pattern-architecture/hexagonal_architecture.md) - Ports and adapters in Go
 - [Viper Configuration](go/packages/viper/README.md) - Configuration management with Viper
 - [Array vs Pointer Slices](go/quirky/[]UserVS[]*User.md) - `[]User` vs `[]*User`
