@@ -12,7 +12,7 @@ This index covers every utility family in the current [official v4.3 documentati
 
 | CSS concern | v4 utilities | Example |
 | --- | --- | --- |
-| Display | `block`, `inline`, `inline-block`, `flex`, `inline-flex`, `grid`, `inline-grid`, `flow-root`, `hidden` | `hidden md:flex` |
+| Display | `block`, `inline`, `inline-block`, `flex`, `inline-flex`, `grid`, `inline-grid`, `flow-root`, `contents`, `list-item`, `table`, `table-row`, `table-cell`, and related `table-*` forms, `hidden` | `hidden md:flex` |
 | Columns | `columns-*`, `columns-<n>`, `columns-3xs` … `columns-7xl` | `columns-2` |
 | Breaks | `break-before-*`, `break-after-*`, `break-inside-*` | `break-inside-avoid` |
 | Box decoration | `box-decoration-clone`, `box-decoration-slice` | `box-decoration-clone` |
@@ -25,6 +25,7 @@ This index covers every utility family in the current [official v4.3 documentati
 | Overflow | `overflow-*`, `overflow-x-*`, `overflow-y-*`, `overscroll-*` | `overflow-x-auto` |
 | Visibility | `visible`, `invisible`, `collapse` | `invisible` |
 | Box sizing | `box-border`, `box-content` | `box-border` |
+| Containment | `contain-none`, `contain-content`, `contain-strict`, `contain-size`, `contain-inline-size`, `contain-layout`, `contain-paint`, `contain-style`, `contain-[...]` | `contain-content` |
 | Container | `container` | `container mx-auto` |
 | Container type | `@container`, `@container/{name}`, `@container-size`, `@container-size/{name}` | `@container-size` |
 
@@ -56,7 +57,7 @@ The default scale is based on `--spacing` and is dynamic in v4; classes such as 
 | Placeholder color | `placeholder-<color>-<shade>`, `placeholder-current`, `placeholder-transparent` | `placeholder-slate-400` |
 | Line height | `leading-*` or the `text-size/line-height` shorthand | `leading-relaxed` |
 | Letter spacing | `tracking-tighter`, `tracking-tight`, `tracking-normal`, `tracking-wide`, `tracking-wider`, `tracking-widest` | `tracking-tight` |
-| Decoration | `underline`, `overline`, `line-through`, `no-underline`, `decoration-*`, `underline-offset-*` | `underline decoration-2` |
+| Decoration | `underline`, `overline`, `line-through`, `no-underline`; `decoration-<color>`, `decoration-solid`/`double`/`dotted`/`dashed`/`wavy`, `decoration-<n>`, `decoration-from-font`; `underline-offset-*` | `underline decoration-wavy decoration-2` |
 | Transform | `uppercase`, `lowercase`, `capitalize`, `normal-case` | `uppercase` |
 | Overflow | `truncate`, `text-ellipsis`, `text-clip` | `truncate` |
 | Line clamp | `line-clamp-*`, `line-clamp-none`, `line-clamp-[...]` | `line-clamp-3` |
@@ -65,8 +66,8 @@ The default scale is based on `--spacing` and is dynamic in v4; classes such as 
 | Text indent | `indent-*` | `indent-8` |
 | Tab size | `tab-*`, `tab-[...]`, `tab-(--token)` | `tab-4` |
 | Vertical align | `align-baseline`, `align-top`, `align-middle`, `align-bottom`, `align-text-top`, `align-text-bottom`, `align-sub`, `align-super` | `align-middle` |
-| White space | `whitespace-normal`, `whitespace-nowrap`, `whitespace-pre`, `whitespace-pre-wrap`, `whitespace-break-spaces` | `whitespace-pre-wrap` |
-| Word wrapping | `break-normal`, `break-words`, `break-all`, `break-keep`, `wrap-break-word` | `wrap-break-word` |
+| White space | `whitespace-normal`, `whitespace-nowrap`, `whitespace-pre`, `whitespace-pre-line`, `whitespace-pre-wrap`, `whitespace-break-spaces` | `whitespace-pre-wrap` |
+| Word wrapping | `break-normal`, `break-all`, `break-keep` (`word-break`); `wrap-normal`, `wrap-break-word`, `wrap-anywhere` (`overflow-wrap`) | `wrap-break-word` |
 | Hyphens | `hyphens-none`, `hyphens-manual`, `hyphens-auto` | `hyphens-auto` |
 | Generated content | `content-none`, `content-[...]`, `content-(--token)` with `before:`/`after:` | `before:content-['→']` |
 
@@ -74,17 +75,17 @@ The default scale is based on `--spacing` and is dynamic in v4; classes such as 
 
 | CSS concern | v4 utilities | Example |
 | --- | --- | --- |
-| Background color | `bg-<color>-<shade>`, `bg-current`, `bg-transparent` | `bg-blue-500` |
+| Background color | `bg-<color>-<shade>`, `bg-current`, `bg-inherit`, `bg-transparent` | `bg-blue-500` |
 | Background attachment | `bg-fixed`, `bg-local`, `bg-scroll` | `bg-fixed` |
 | Text color | `text-<color>-<shade>` | `text-white` |
 | Opacity | Add `/0` through `/100`, or an arbitrary percentage | `bg-blue-500/50`, `text-black/[37%]` |
 | Gradient | `bg-linear-to-*`, `bg-linear-<angle>`, `bg-radial`, `bg-conic-<angle>` | `bg-linear-to-r from-cyan-500 to-blue-500` |
 | Gradient stops | `from-*`, `via-*`, `to-*` plus stop positions | `from-indigo-500 via-purple-500 to-pink-500` |
-| Background image | `bg-[url(...)]`, `bg-(image:--token)` | `bg-[url(/hero.jpg)]` |
+| Background image | `bg-[url(...)]`, `bg-(image:--token)`, `bg-none` | `bg-[url(/hero.jpg)]` |
 | Background origin | `bg-origin-border`, `bg-origin-padding`, `bg-origin-content` | `bg-origin-content` |
-| Background size | `bg-auto`, `bg-cover`, `bg-contain` | `bg-cover` |
-| Background position | `bg-center`, `bg-top`, `bg-bottom`, `bg-left`, `bg-right` | `bg-center` |
-| Background repeat | `bg-repeat`, `bg-no-repeat`, `bg-repeat-x`, `bg-repeat-y` | `bg-no-repeat` |
+| Background size | `bg-auto`, `bg-cover`, `bg-contain`, `bg-size-[...]` | `bg-cover` |
+| Background position | `bg-center`, `bg-top`, `bg-bottom`, `bg-left`, `bg-right`, corners such as `bg-top-left`, `bg-position-[...]` | `bg-center` |
+| Background repeat | `bg-repeat`, `bg-no-repeat`, `bg-repeat-x`, `bg-repeat-y`, `bg-repeat-round`, `bg-repeat-space` | `bg-no-repeat` |
 | Background clip | `bg-clip-border`, `bg-clip-padding`, `bg-clip-content`, `bg-clip-text` | `bg-clip-text` |
 
 The current default palette has shades `50` through `950`, including `slate`, `gray`, `zinc`, `neutral`, `stone`, `red`, `orange`, `amber`, `yellow`, `lime`, `green`, `emerald`, `teal`, `cyan`, `sky`, `blue`, `indigo`, `violet`, `purple`, `fuchsia`, `pink`, `rose`, `taupe`, `mauve`, `mist`, and `olive`.
@@ -95,9 +96,9 @@ The current default palette has shades `50` through `950`, including `slate`, `g
 | --- | --- | --- |
 | Width | `w-*`, `w-full`, `w-screen`, `w-min`, `w-max`, `w-fit`, fractions | `w-1/2 md:w-full` |
 | Size | `size-*`, `size-full`, `size-min`, `size-max`, `size-fit`, fractions | `size-12` |
-| Height | `h-*`, `h-full`, `h-screen`, `h-min`, `h-max`, `h-fit` | `h-screen` |
+| Height | `h-*`, `h-full`, `h-screen`, `h-dvh`, `h-svh`, `h-lvh`, `h-lh`, `h-min`, `h-max`, `h-fit` | `h-dvh` |
 | Min/max width | `min-w-*`, `max-w-*` | `max-w-7xl` |
-| Min/max height | `min-h-*`, `max-h-*` | `min-h-screen` |
+| Min/max height | `min-h-*`, `max-h-*`, including `dvh`/`svh`/`lvh` and `lh` (one line height) | `min-h-dvh max-h-lh` |
 | Aspect ratio | `aspect-auto`, `aspect-square`, `aspect-video`, `aspect-[...]` | `aspect-video` |
 | Flex basis | `basis-*` | `basis-1/2` |
 | Object fit | `object-contain`, `object-cover`, `object-fill`, `object-none`, `object-scale-down` | `object-cover` |
@@ -115,11 +116,12 @@ The current default palette has shades `50` through `950`, including `slate`, `g
 | Basis | `basis-*` | `basis-1/2` |
 | Grow/shrink | `grow`, `grow-0`, `shrink`, `shrink-0` | `grow` |
 | Order | `order-*`, `order-first`, `order-last`, `order-none` | `order-2` |
-| Justify content | `justify-start`, `justify-center`, `justify-between`, `justify-around`, `justify-evenly`, `justify-stretch` | `justify-between` |
+| Justify content | `justify-start`, `justify-center`, `justify-between`, `justify-around`, `justify-evenly`, `justify-stretch`, `justify-baseline`, `justify-normal` | `justify-between` |
+| Safe alignment | `*-center-safe`, `*-end-safe` on `justify`, `items`, `self`, `content`, and `place` utilities; falls back to `start` when content would overflow | `justify-center-safe` |
 | Justify items/self | `justify-items-*`, `justify-self-*` | `justify-items-center` |
 | Align content | `content-normal`, `content-center`, `content-start`, `content-end`, `content-between`, `content-around`, `content-evenly`, `content-baseline`, `content-stretch` | `content-center` |
-| Align items | `items-start`, `items-center`, `items-end`, `items-baseline`, `items-stretch` | `items-center` |
-| Align self | `self-auto`, `self-start`, `self-center`, `self-end`, `self-stretch` | `self-end` |
+| Align items | `items-start`, `items-center`, `items-end`, `items-baseline`, `items-baseline-last`, `items-stretch` | `items-center` |
+| Align self | `self-auto`, `self-start`, `self-center`, `self-end`, `self-baseline`, `self-baseline-last`, `self-stretch` | `self-end` |
 | Grid columns | `grid-cols-<n>`, `grid-cols-none`, `grid-cols-subgrid`, `grid-cols-[...]` | `grid grid-cols-3` |
 | Grid rows | `grid-rows-<n>`, `grid-rows-none`, `grid-rows-subgrid`, `grid-rows-[...]` | `grid-rows-2` |
 | Grid span/start/end | `col-span-*`, `col-start-*`, `col-end-*`, `row-span-*`, `row-start-*`, `row-end-*` | `col-span-2` |
@@ -135,19 +137,20 @@ The current default palette has shades `50` through `950`, including `slate`, `g
 | Border style | `border-solid`, `border-dashed`, `border-dotted`, `border-double`, `border-hidden`, `border-none` | `border-dashed` |
 | Radius | `rounded-xs`, `rounded-sm`, `rounded`, `rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-2xl`, `rounded-3xl`, `rounded-full` | `rounded-lg` |
 | Child dividers | `divide-x-*`, `divide-y-*`, `divide-<color>-*`, `divide-dashed` | `divide-y divide-slate-200` |
-| Shadow | `shadow-xs`, `shadow-sm`, `shadow-md`, `shadow-lg`, `shadow-xl`, `shadow-2xl`, `shadow-inner`, `shadow-none` | `shadow-lg` |
-| Inset shadow | `inset-shadow-*`, `inset-shadow-none` | `inset-shadow-sm` |
-| Text shadow | `text-shadow-2xs`, `text-shadow-xs`, `text-shadow-sm`, `text-shadow-md`, `text-shadow-lg`, `text-shadow-none` | `text-shadow-sm` |
+| Shadow | `shadow-2xs`, `shadow-xs`, `shadow-sm`, `shadow-md`, `shadow-lg`, `shadow-xl`, `shadow-2xl`, `shadow-none`; color with `shadow-<color>` | `shadow-lg shadow-blue-500/50` |
+| Inset shadow | `inset-shadow-2xs`, `inset-shadow-xs`, `inset-shadow-sm`, `inset-shadow-none`, `inset-shadow-<color>`; prefer over deprecated `shadow-inner` | `inset-shadow-sm` |
+| Text shadow | `text-shadow-2xs`, `text-shadow-xs`, `text-shadow-sm`, `text-shadow-md`, `text-shadow-lg`, `text-shadow-none`, `text-shadow-<color>` | `text-shadow-2xs text-shadow-sky-300` |
 | Opacity | `opacity-*` | `opacity-75` |
-| Outline | `outline`, `outline-2`, `outline-<color>-*`, `outline-dashed`, `outline-hidden`, `outline-none` | `focus:outline-2 focus:outline-blue-500` |
+| Outline | `outline`, `outline-2`, `outline-<color>-*`, `outline-solid`/`dashed`/`dotted`/`double`, `outline-offset-*`, `outline-hidden`, `outline-none` | `focus:outline-2 focus:outline-offset-2 focus:outline-blue-500` |
 | Logical borders | `border-s-*`, `border-e-*`, `border-bs-*`, `border-be-*` | `border-bs-2` |
-| Ring | `ring`, `ring-2`, `ring-3`, `ring-4`, `ring-<color>-*` | `focus:ring-2 focus:ring-blue-500` |
+| Ring | `ring`, `ring-2`, `ring-3`, `ring-4`, `ring-<color>-*`, `ring-inset` | `focus:ring-2 focus:ring-blue-500` |
 | Inset ring | `inset-ring`, `inset-ring-2`, `inset-ring-<color>-*` | `inset-ring-2` |
 | Ring offset | `ring-offset-*`, `ring-offset-<color>-*` | `ring-2 ring-offset-2` |
-| Blend | `mix-blend-*`, `bg-blend-*` | `mix-blend-multiply` |
+| Blend | `mix-blend-*` (including `mix-blend-plus-darker`, `mix-blend-plus-lighter`), `bg-blend-*` | `mix-blend-multiply` |
 | Filter | `blur-*`, `brightness-*`, `contrast-*`, `grayscale`, `invert`, `saturate-*`, `sepia`, `hue-rotate-*` | `blur-sm` |
-| Drop shadow | `drop-shadow-xs`, `drop-shadow-sm`, `drop-shadow-md`, `drop-shadow-lg`, `drop-shadow-xl`, `drop-shadow-2xl`, `drop-shadow-none` | `drop-shadow-lg` |
-| Mask | `mask-clip-*`, `mask-composite-*`, `mask-[...]`, `mask-linear-*`, `mask-radial-*`, `mask-conic-*`, `mask-mode-*`, `mask-origin-*`, `mask-position-*`, `mask-repeat-*`, `mask-size-*`, `mask-type-*` | `mask-linear-45 from-black to-transparent` |
+| Drop shadow | `drop-shadow-xs`, `drop-shadow-sm`, `drop-shadow-md`, `drop-shadow-lg`, `drop-shadow-xl`, `drop-shadow-2xl`, `drop-shadow-none`, `drop-shadow-<color>` | `drop-shadow-xl drop-shadow-cyan-500/50` |
+| Mask image | `mask-[...]`, `mask-none`; edge fades `mask-t-from-*`, `mask-r-to-*`, `mask-b-*`, `mask-l-*`, `mask-x-*`, `mask-y-*`; `mask-linear-<angle>` with `mask-linear-from-*`/`mask-linear-to-*`; `mask-radial-*` (`mask-radial-at-*`, `mask-radial-[size]`, `mask-radial-from-*`); `mask-conic-<angle>` with `mask-conic-from-*`/`to-*` | `mask-b-from-20% mask-b-to-80%` |
+| Mask properties | `mask-clip-*`, `mask-add`/`subtract`/`intersect`/`exclude` (composite), `mask-alpha`/`luminance`/`match` (mode), `mask-origin-*`, `mask-position-*`, `mask-repeat-*`, `mask-size-*` (`mask-cover`, `mask-contain`), `mask-type-*` | `mask-linear-50 mask-linear-from-60% mask-linear-to-80%` |
 | Backdrop filter | `backdrop-blur-*`, `backdrop-brightness-*`, `backdrop-contrast-*`, `backdrop-grayscale`, `backdrop-hue-rotate-*`, `backdrop-invert`, `backdrop-opacity-*`, `backdrop-saturate-*`, `backdrop-sepia` | `backdrop-blur-md` |
 
 ## Tables
@@ -175,7 +178,7 @@ The current default palette has shades `50` through `950`, including `slate`, `g
 | Skew | `skew-x-*`, `skew-y-*` | `skew-x-3` |
 | Origin | `origin-center`, `origin-top`, and related forms | `origin-center` |
 | 3D | `transform-3d`, `transform-flat`, `perspective-*`, `perspective-origin-*`, `backface-visible`, `backface-hidden` | `transform-3d` |
-| Transform control | `transform`, `transform-none`, `transform-content`, `transform-border`, `transform-fill`, `transform-stroke`, `transform-view` | `transform` |
+| Transform control | `transform`, `transform-none`, `transform-gpu`, `transform-cpu`, `scale-3d`, `translate-3d`; box: `transform-content`, `transform-border`, `transform-fill`, `transform-stroke`, `transform-view` | `transform-gpu` |
 | Zoom | `zoom-*`, `zoom-[...]`, `zoom-(--token)` | `zoom-125` |
 
 ## Interactivity and accessibility
@@ -197,7 +200,7 @@ The current default palette has shades `50` through `950`, including `slate`, `g
 | Snap | `snap-none`, `snap-x`, `snap-y`, `snap-mandatory`, `snap-center`, and related forms | `snap-x snap-mandatory` |
 | Touch action | `touch-auto`, `touch-none`, `touch-pan-x`, `touch-pan-y`, `touch-pinch-zoom`, and combinations | `touch-pan-y` |
 | Will change | `will-change-auto`, `will-change-scroll`, `will-change-contents`, `will-change-transform`, `will-change-[...]` | `will-change-transform` |
-| Color scheme | `scheme-normal`, `scheme-light`, `scheme-dark`, `scheme-light-dark` | `scheme-dark` |
+| Color scheme | `scheme-normal`, `scheme-light`, `scheme-dark`, `scheme-light-dark`, `scheme-only-light`, `scheme-only-dark` | `scheme-dark` |
 | Screen reader | `sr-only`, `not-sr-only` | `sr-only` |
 | SVG fill/stroke | `fill-*`, `stroke-*`, `stroke-<width>` | `fill-current stroke-2` |
 | Forced colors | `forced-color-adjust-auto`, `forced-color-adjust-none`; `forced-colors:*` variant | `forced-color-adjust-none` |
@@ -224,18 +227,40 @@ The current default palette has shades `50` through `950`, including `slate`, `g
 <div class="motion-reduce:transition-none print:hidden">
   Media variants
 </div>
+
+<div class="group/card">
+  <div class="group/item">
+    <span class="group-hover/card:underline group-hover/item:text-blue-500">Named groups</span>
+  </div>
+</div>
+
+<input class="peer/email" type="email" />
+<p class="invisible peer-invalid/email:visible">Named peer</p>
+
+<ul class="*:rounded-md *:px-2 **:data-avatar:size-8">
+  Direct children and all descendants
+</ul>
+
+<div class="md:max-xl:flex [&.is-dragging]:cursor-grabbing">
+  Breakpoint range and arbitrary variant
+</div>
 ```
 
 - Responsive variants are mobile-first: `sm` 40rem, `md` 48rem, `lg` 64rem, `xl` 80rem, `2xl` 96rem.
 - Add custom breakpoints with `@theme { --breakpoint-3xl: 120rem; }`.
 - Use `min-[...]:` and `max-[...]:` for one-off breakpoints.
-- Use `@container` on a parent and `@sm:`, `@md:`, and related variants on children for container queries.
+- Stack `<bp>:max-<bp>:` to target a range, for example `md:max-xl:flex` applies only from `md` to below `xl`.
+- Use `@container` on a parent and `@sm:`, `@md:`, and related variants on children for container queries. `@max-md:` targets below a size, `@sm:@max-md:` targets a range, `@md/main:` targets a named `@container/main`, and `@min-[475px]:`/`@max-[960px]:` handle one-offs.
 - `dark:` defaults to `prefers-color-scheme`. Override it with `@custom-variant dark (&:where(.dark, .dark *));` for class- or attribute-driven dark mode.
-- Use `not-*`, `starting`, `aria-*`, `data-*`, `group-*`, `peer-*`, `has-*`, `in-*`, `supports-*`, `motion-*`, `contrast-*`, and `print` variants as needed.
+- Use `not-*`, `starting`, `aria-*`, `data-*`, `group-*`, `peer-*`, `has-*`, `in-*`, `supports-*`, `motion-*`, `contrast-*`, and `print` variants as needed. `in-*` is like `group-*` without a `group` class: it matches any ancestor state.
+- `*:` targets direct children and `**:` targets all descendants. `group/{name}` and `peer/{name}` scope nested groups and peers.
+- Interaction variants include `hover`, `focus`, `focus-within`, `focus-visible`, `active`, `enabled`, `disabled`, and `inert`.
+- Direction variants: `ltr`, `rtl`. Prefer logical utilities such as `ms-*` and `ps-*` when direction should flip automatically.
+- Arbitrary variants take any selector with `&`: `[&.is-dragging]:`, `[&_p]:mt-4`, `[@supports(display:grid)]:grid`.
 - Use `forced-colors:*` for Windows High Contrast mode and `@starting-style`-based entry transitions with the `starting` variant.
-- Structural variants include `first`, `last`, `only`, `odd`, `even`, `first-of-type`, `last-of-type`, `only-of-type`, `empty`, and `nth-*` forms.
-- Form/state variants include `checked`, `indeterminate`, `default`, `required`, `valid`, `invalid`, `in-range`, `out-of-range`, `placeholder-shown`, `autofill`, `read-only`, `open`, `target`, and `visited`.
-- Pseudo-element variants include `before`, `after`, `first-letter`, `first-line`, `marker`, `selection`, `file`, `placeholder`, and `backdrop`.
+- Structural variants include `first`, `last`, `only`, `odd`, `even`, `first-of-type`, `last-of-type`, `only-of-type`, `empty`, `nth-*`, `nth-last-*`, `nth-of-type-*`, and `nth-last-of-type-*`.
+- Form/state variants include `checked`, `indeterminate`, `default`, `required`, `optional`, `valid`, `invalid`, `user-valid`, `user-invalid`, `in-range`, `out-of-range`, `placeholder-shown`, `autofill`, `read-only`, `open`, `target`, and `visited`. `user-valid`/`user-invalid` apply only after the user interacts, unlike `valid`/`invalid`.
+- Pseudo-element variants include `before`, `after`, `first-letter`, `first-line`, `marker`, `selection`, `file`, `placeholder`, `backdrop`, and `details-content`.
 - Media variants include `portrait`, `landscape`, `motion-safe`, `motion-reduce`, `contrast-more`, `contrast-less`, `pointer-*`, `any-pointer-*`, `inverted-colors`, `noscript`, and `forced-colors`.
 - In v4, `hover:` is wrapped in `@media (hover: hover)` for devices that support hover.
 

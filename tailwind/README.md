@@ -1,6 +1,6 @@
 # Tailwind CSS v4 reference
 
-This folder targets Tailwind CSS v4.x. It covers installation, CSS-first configuration, utility-to-CSS mappings, and the v3 → v4 migration checklist.
+This folder targets Tailwind CSS v4.x (verified against v4.3). It covers installation, CSS-first configuration, utility-to-CSS mappings, and the v3 → v4 migration checklist.
 
 Official references:
 
@@ -78,6 +78,31 @@ npm install tailwindcss @tailwindcss/cli
 npx @tailwindcss/cli -i ./src/input.css -o ./src/output.css --watch
 ```
 
+### webpack
+
+v4.2 added a dedicated loader. It is faster than routing webpack through `postcss-loader` and also works under Turbopack's webpack-loader compatibility layer.
+
+```bash
+npm install tailwindcss @tailwindcss/webpack
+```
+
+```js
+// webpack.config.js
+const MiniCssExtractPlugin = require("mini-css-extract-plugin")
+
+module.exports = {
+  plugins: [new MiniCssExtractPlugin()],
+  module: {
+    rules: [
+      {
+        test: /\.css$/i,
+        use: [MiniCssExtractPlugin.loader, "css-loader", "@tailwindcss/webpack"],
+      },
+    ],
+  },
+}
+```
+
 ### Play CDN
 
 Useful for prototypes and documentation examples only. It is not intended for production.
@@ -93,7 +118,7 @@ Useful for prototypes and documentation examples only. It is not intended for pr
 - Configuration is CSS-first. Put design tokens in `@theme` instead of starting with `tailwind.config.js`.
 - Source detection is automatic. Tailwind uses project heuristics and ignores `.gitignore` paths, `node_modules`, binaries, CSS files, and lockfiles.
 - Use `@source` for extra or excluded paths and `@source inline()` for safelisting.
-- Theme values are emitted as CSS variables and can be used directly with `var(--color-blue-500)`, `var(--text-base)`, and similar variables.
+- Theme values are emitted as CSS variables and can be used directly with `var(--color-blue-500)`, `var(--text-base)`, and similar variables. Only variables that are used get emitted; use `@theme static` to emit all of them.
 - v4 uses modern CSS and requires Chrome 111+, Safari 16.4+, or Firefox 128+ for core functionality.
 - CSS preprocessors such as Sass, Less, and Stylus are not supported as part of the v4 workflow.
 
@@ -124,6 +149,38 @@ Use `@theme inline` when a theme token references another CSS variable whose val
 }
 ```
 
+Without `inline`, `var(--brand)` resolves where the theme variable is defined (`:root`), not where the utility is used, so a nested override of `--brand` would be ignored.
+
+Reset a whole namespace, or the entire default theme, with `initial`:
+
+```css
+@theme {
+  --color-*: initial; /* removes bg-red-500 etc.; only custom colors remain */
+  --color-midnight: #121063;
+}
+
+@theme {
+  --*: initial; /* drop every default token */
+  --spacing: 4px;
+  --font-body: Inter, sans-serif;
+}
+```
+
+Define keyframes inside `@theme` next to their `--animate-*` token so they are emitted only when the animation is used:
+
+```css
+@theme {
+  --animate-fade-in: fade-in 0.3s ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+```
+
+Use `@theme static` to emit every variable even when no utility uses it. Shared tokens can live in a separate CSS file imported after `tailwindcss`.
+
 Use the generated variables in ordinary CSS when that is clearer than `@apply`:
 
 ```css
@@ -133,6 +190,29 @@ Use the generated variables in ordinary CSS when that is clearer than `@apply`:
   }
 }
 ```
+
+## Import options
+
+```css
+/* Prefix every utility and theme variable: tw:flex, --tw-color-red-500 */
+@import "tailwindcss" prefix(tw);
+
+/* Mark every utility !important (legacy CSS with high specificity) */
+@import "tailwindcss" important;
+```
+
+`@import "tailwindcss"` is shorthand for importing the layers individually. Import them separately to disable Preflight or control layer placement:
+
+```css
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+/* Omit this line to disable Preflight. */
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
+```
+
+When importing files individually, put `source()`, `theme()`, and `prefix()` on their matching imports.
 
 ## Source detection
 
@@ -283,6 +363,7 @@ The v4 gradient API uses names such as `bg-linear-to-r`, `bg-radial`, and `bg-co
 - `hover:` only applies when the primary input supports hover. Override it with `@custom-variant hover (&:hover)` only when the old behavior is intentional.
 - `rotate-*`, `scale-*`, and `translate-*` use individual CSS properties. Replace `transform-none` resets with the matching `scale-none`, `rotate-none`, or `translate-none` reset.
 - If a custom transition includes `transform`, use individual properties such as `transition-[opacity,scale]`.
+- `transition` and `transition-colors` now include `outline-color`. Set the outline color unconditionally (`outline-cyan-500 transition hover:outline-2`) so it does not animate from `currentColor`.
 - `container` no longer has v3 `center` and `padding` config options. Customize it with `@utility container`.
 - `corePlugins` is not supported.
 - `resolveConfig` is removed. Read generated theme variables from CSS, or use `getComputedStyle(document.documentElement)` when JavaScript needs a resolved value.

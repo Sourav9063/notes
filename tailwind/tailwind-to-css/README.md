@@ -33,7 +33,7 @@ The family map below covers every utility category in the current [official v4.3
 | `border-dashed` | `border-style: dashed;` |
 | `shadow-lg` | `box-shadow: var(--shadow-lg);` |
 | `opacity-75` | `opacity: 75%;` |
-| `transition-colors` | `transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, outline-color;` |
+| `transition-colors` | `transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;` |
 | `duration-300` | `transition-duration: 300ms;` |
 | `hover:scale-105` | A hover rule using `scale: 105%;` |
 
@@ -58,6 +58,7 @@ Use this as a property lookup. A single Tailwind family can emit more than one d
 | `break-before-*`, `break-after-*`, `break-inside-*` | `break-before`, `break-after`, `break-inside` |
 | `box-decoration-*` | `box-decoration-break` |
 | `box-border`, `box-content` | `box-sizing` |
+| `contain-*` | `contain` |
 | `block`, `inline`, `flex`, `grid`, `hidden`, and related display utilities | `display` |
 | `float-*` | `float` |
 | `clear-*` | `clear` |
@@ -84,6 +85,7 @@ Use this as a property lookup. A single Tailwind family can emit more than one d
 | `auto-rows-*` | `grid-auto-rows` |
 | `gap-*`, `gap-x-*`, `gap-y-*` | `gap`, `column-gap`, `row-gap` |
 | `justify-*` | `justify-content` |
+| `*-center-safe`, `*-end-safe` alignment | `safe center`, `safe flex-end` alignment keywords |
 | `justify-items-*`, `justify-self-*` | `justify-items`, `justify-self` |
 | `content-normal`, `content-center`, and related alignment values | `align-content` |
 | `items-*`, `self-*` | `align-items`, `align-self` |
@@ -95,7 +97,7 @@ Use this as a property lookup. A single Tailwind family can emit more than one d
 | `-m-*`, `-mx-*`, `-my-*`, and related forms | Negative margin values |
 | `space-x-*`, `space-y-*` | Sibling combinator margins |
 | `w-*`, `min-w-*`, `max-w-*` | `width`, `min-width`, `max-width` |
-| `h-*`, `min-h-*`, `max-h-*` | `height`, `min-height`, `max-height` |
+| `h-*`, `min-h-*`, `max-h-*` | `height`, `min-height`, `max-height`; `*-dvh`/`*-svh`/`*-lvh` use dynamic/small/large viewport units, `*-lh` uses `1lh` |
 | `size-*` | Both `width` and `height` |
 | `inline-*`, `min-inline-*`, `max-inline-*` | `inline-size`, `min-inline-size`, `max-inline-size` |
 | `block-*`, `min-block-*`, `max-block-*` | `block-size`, `min-block-size`, `max-block-size` |
@@ -124,7 +126,8 @@ Use this as a property lookup. A single Tailwind family can emit more than one d
 | `tab-*` | `tab-size` |
 | `align-*` | `vertical-align` |
 | `whitespace-*` | `white-space` |
-| `break-normal`, `break-words`, `break-all`, `break-keep`, `wrap-break-word` | `word-break`, `overflow-wrap` |
+| `break-normal`, `break-all`, `break-keep` | `word-break` |
+| `wrap-normal`, `wrap-break-word`, `wrap-anywhere` | `overflow-wrap` |
 | `hyphens-*` | `hyphens` |
 | `content-none`, `content-[...]`, `content-(--token)` | `content` |
 | `bg-fixed`, `bg-local`, `bg-scroll` | `background-attachment` |
@@ -141,16 +144,17 @@ Use this as a property lookup. A single Tailwind family can emit more than one d
 | `border-s-*`, `border-e-*`, `border-bs-*`, `border-be-*` | Logical border side properties |
 | `divide-*` | Child-combinator borders and their width/color/style |
 | `outline-*` | `outline-width`, `outline-color`, `outline-style`, `outline-offset` |
-| `shadow-*` | `box-shadow` |
+| `shadow-*` | `box-shadow`; `shadow-<color>` sets `--tw-shadow-color` |
 | `inset-shadow-*` | Inset `box-shadow` |
 | `inset-ring-*` | Inset ring `box-shadow` |
 | `ring-*`, `ring-inset`, `ring-offset-*` | Ring and ring-offset `box-shadow` layers |
-| `text-shadow-*` | `text-shadow` |
+| `text-shadow-*` | `text-shadow`; `text-shadow-<color>` sets the shadow color |
 | `opacity-*` | `opacity` |
 | `mix-blend-*`, `bg-blend-*` | `mix-blend-mode`, `background-blend-mode` |
-| `mask-clip-*`, `mask-composite-*`, `mask-[...]`, `mask-mode-*` | `mask-clip`, `mask-composite`, `mask-image`, `mask-mode` |
+| `mask-[...]`, `mask-none`, `mask-linear-*`, `mask-radial-*`, `mask-conic-*`, `mask-t-*`/`r`/`b`/`l`/`x`/`y` edge fades | `mask-image` gradients composed from `--tw-mask-*` variables |
+| `mask-clip-*`, `mask-add`/`subtract`/`intersect`/`exclude`, `mask-alpha`/`luminance`/`match` | `mask-clip`, `mask-composite`, `mask-mode` |
 | `mask-origin-*`, `mask-position-*`, `mask-repeat-*`, `mask-size-*`, `mask-type-*` | Corresponding mask properties |
-| `blur-*`, `brightness-*`, `contrast-*`, `drop-shadow-*`, `grayscale`, `hue-rotate-*`, `invert`, `saturate-*`, `sepia` | `filter` functions |
+| `blur-*`, `brightness-*`, `contrast-*`, `drop-shadow-*`, `grayscale`, `hue-rotate-*`, `invert`, `saturate-*`, `sepia` | `filter` functions; `drop-shadow-<color>` colors the drop shadow |
 | `backdrop-blur-*`, `backdrop-brightness-*`, and related forms | `backdrop-filter` functions |
 | `border-collapse`, `border-separate` | `border-collapse` |
 | `border-spacing-*`, `border-spacing-x-*`, `border-spacing-y-*` | `border-spacing` and its axes |
@@ -165,7 +169,9 @@ Use this as a property lookup. A single Tailwind family can emit more than one d
 | `backface-visible`, `backface-hidden` | `backface-visibility` |
 | `perspective-*`, `perspective-origin-*` | `perspective`, `perspective-origin` |
 | `rotate-*`, `scale-*`, `skew-*`, `translate-*` | Individual transform properties |
-| `transform`, `transform-none`, `transform-flat`, `transform-3d` | `transform`, `transform-style` |
+| `transform`, `transform-none`, `transform-gpu`, `transform-cpu` | `transform` (`transform-gpu` adds `translateZ(0)`) |
+| `transform-flat`, `transform-3d` | `transform-style` |
+| `transform-content`, `transform-border`, `transform-fill`, `transform-stroke`, `transform-view` | `transform-box` |
 | `origin-*` | `transform-origin` |
 | `zoom-*` | `zoom` |
 | `accent-*` | `accent-color` |
