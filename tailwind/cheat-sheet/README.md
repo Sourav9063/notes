@@ -81,12 +81,14 @@ The default scale is based on `--spacing` and is dynamic in v4; classes such as 
 | Opacity | Add `/0` through `/100`, or an arbitrary percentage | `bg-blue-500/50`, `text-black/[37%]` |
 | Gradient | `bg-linear-to-*`, `bg-linear-<angle>`, `bg-radial`, `bg-conic-<angle>` | `bg-linear-to-r from-cyan-500 to-blue-500` |
 | Gradient stops | `from-*`, `via-*`, `to-*` plus stop positions | `from-indigo-500 via-purple-500 to-pink-500` |
+| Gradient interpolation | Add `/srgb`, `/hsl`, `/oklab` (default), `/oklch`, `/longer`, `/shorter`, `/increasing`, `/decreasing` to the gradient direction | `bg-linear-to-r/longer from-sky-400 to-violet-600` |
 | Background image | `bg-[url(...)]`, `bg-(image:--token)`, `bg-none` | `bg-[url(/hero.jpg)]` |
 | Background origin | `bg-origin-border`, `bg-origin-padding`, `bg-origin-content` | `bg-origin-content` |
 | Background size | `bg-auto`, `bg-cover`, `bg-contain`, `bg-size-[...]` | `bg-cover` |
 | Background position | `bg-center`, `bg-top`, `bg-bottom`, `bg-left`, `bg-right`, corners such as `bg-top-left`, `bg-position-[...]` | `bg-center` |
 | Background repeat | `bg-repeat`, `bg-no-repeat`, `bg-repeat-x`, `bg-repeat-y`, `bg-repeat-round`, `bg-repeat-space` | `bg-no-repeat` |
 | Background clip | `bg-clip-border`, `bg-clip-padding`, `bg-clip-content`, `bg-clip-text` | `bg-clip-text` |
+| Gradient text (recipe) | A gradient background, clipped to the glyphs, with transparent text | `bg-linear-to-r from-pink-500 to-violet-600 bg-clip-text text-transparent` |
 
 The current default palette has shades `50` through `950`, including `slate`, `gray`, `zinc`, `neutral`, `stone`, `red`, `orange`, `amber`, `yellow`, `lime`, `green`, `emerald`, `teal`, `cyan`, `sky`, `blue`, `indigo`, `violet`, `purple`, `fuchsia`, `pink`, `rose`, `taupe`, `mauve`, `mist`, and `olive`.
 
