@@ -2315,6 +2315,390 @@ A large `LWLock: WALWrite` count = WAL bottleneck. A large `IO: DataFileRead` co
 
 ---
 
+## 22. Index Types Beyond B-Tree
+
+B-tree covers `=`, `<`, `>`, `BETWEEN`, `IN`, `IS NULL`, `ORDER BY`, and prefix `LIKE 'abc%'` (only with `C` collation or a `text_pattern_ops` index). Containment, overlap, full-text, nearest-neighbour, and "billions of rows, tiny index" need a different access method.
+
+| Type | Structure | Wins for | Watch out for |
+| ---- | --------- | -------- | ------------- |
+| **Hash** | Buckets of 4-byte hash codes | `=` on long keys (URLs, tokens) — entry size doesn't grow with key length | Equality only; no `UNIQUE`, multi-column, sorting, or index-only scans. Not WAL-logged before PG10 — never use on PG9.x |
+| **GIN** | Inverted index: each key (array element, JSON key/value, lexeme, trigram) → sorted list of heap TIDs | Many values per row: `jsonb @>`, array `@>` / `&&`, full-text `@@`, `pg_trgm` | Large; slow to update; no ordering |
+| **GiST** | Balanced tree of "bounding" predicates (lossy, results rechecked) | Overlap / containment / distance: ranges `&&`, PostGIS geometry, `EXCLUDE` constraints, KNN `ORDER BY col <-> value` | Slower than GIN for pure lookups; quality depends on the opclass |
+| **SP-GiST** | Space-partitioned, unbalanced trees (quad-tree, k-d tree, radix trie) | Data with natural partitioning: points, `inet`, text prefixes | Niche; benchmark against GiST |
+| **BRIN** | Min/max summary per block range (128 pages by default) | Huge append-only tables where the column follows physical order (timestamps, serial IDs) | Useless when correlation is low; always lossy |
+
+### GIN — Inverted Index
+
+```sql
+-- Containment queries on a jsonb column (assume anomaly_routes.metadata jsonb):
+CREATE INDEX idx_routes_meta ON anomaly_routes USING GIN (metadata jsonb_path_ops);
+
+SELECT id FROM anomaly_routes WHERE metadata @> '{"vehicle": "bike"}';   -- uses the index
+SELECT id FROM anomaly_routes WHERE metadata->>'vehicle' = 'bike';       -- does NOT
+
+-- The ->> form needs an expression B-tree instead:
+CREATE INDEX idx_routes_vehicle ON anomaly_routes ((metadata->>'vehicle'));
+```
+
+- **`jsonb_ops` (default) vs `jsonb_path_ops`:** `jsonb_ops` indexes every key and value separately and supports `?`, `?|`, `?&` (key exists) plus `@>`, `@?`, `@@`. `jsonb_path_ops` hashes each full path-to-value, supports only `@>`, `@?`, `@@`, and is usually much smaller and faster for containment.
+- **Write cost — the pending list:** one row can produce hundreds of GIN keys. With `fastupdate = on` (default), new entries go to an unsorted pending list that is merged into the main tree by (auto)vacuum, when it exceeds `gin_pending_list_limit` (default 4MB), or by `SELECT gin_clean_pending_list('idx_routes_meta')`. Every search must also scan the pending list, so a big list means occasional slow reads, and the insert that triggers a merge pays for it. For read-latency-sensitive tables: `WITH (fastupdate = off)`.
+- **Mixing scalars:** GIN can't index a plain `int` column; the `btree_gin` extension adds B-tree-like opclasses so `(tenant_id, tags)` can be one multi-column GIN index.
+
+Full-text search uses GIN on a `tsvector`. The query must use the **same expression and text search configuration** as the index, so a stored generated column (PG12+) is the least error-prone:
+
+```sql
+ALTER TABLE articles ADD COLUMN tsv tsvector
+    GENERATED ALWAYS AS (to_tsvector('english', coalesce(title, '') || ' ' || coalesce(body, ''))) STORED;
+CREATE INDEX idx_articles_tsv ON articles USING GIN (tsv);
+
+SELECT id, ts_rank(tsv, q) AS rank
+FROM articles, websearch_to_tsquery('english', 'postgres vacuum -mysql') AS q
+WHERE tsv @@ q
+ORDER BY rank DESC
+LIMIT 20;
+```
+
+Adding a `STORED` generated column rewrites the table (see section 18) — on a large table, add a plain column, backfill in batches, and keep it current with a trigger instead.
+
+### GiST — Ranges, Geometry, Exclusion, Nearest Neighbour
+
+```sql
+-- No two bookings for the same room may overlap — enforced by the database, race-free:
+CREATE EXTENSION btree_gist;   -- lets GiST handle the plain "room_id WITH =" part
+CREATE TABLE bookings (
+    room_id int       NOT NULL,
+    during  tstzrange NOT NULL,
+    EXCLUDE USING gist (room_id WITH =, during WITH &&)
+);
+
+-- KNN: the index returns rows already ordered by distance — no full sort, stops after LIMIT
+CREATE INDEX idx_places_loc ON places USING gist (location);   -- location is a point
+SELECT name FROM places ORDER BY location <-> point '(90.41, 23.81)' LIMIT 5;
+```
+
+An `EXCLUDE` constraint is the simplest race-free way to prevent overlapping ranges: "check then insert" in the application races under `READ COMMITTED` (see section 23).
+
+### BRIN — Tiny Index for Huge, Ordered Tables
+
+```sql
+-- First check that physical order follows the column (close to 1 or -1 is good):
+SELECT correlation FROM pg_stats WHERE tablename = 'events' AND attname = 'created_at';
+
+CREATE INDEX idx_events_created_brin ON events USING brin (created_at)
+    WITH (pages_per_range = 64, autosummarize = on);
+
+-- Compare against a B-tree on the same column — often KB vs GB:
+SELECT pg_size_pretty(pg_relation_size('idx_events_created_brin'));
+```
+
+How it works: for each range of `pages_per_range` heap pages, BRIN stores the min and max value. A query reads every range whose min/max could match, then rechecks every row in those pages (`Bitmap Heap Scan` with `Heap Blocks: lossy=N` and `Rows Removed by Index Recheck`).
+
+- **Unsummarized tail:** pages appended since the last summarization aren't covered and are always scanned. Vacuum summarizes them; `autosummarize = on` (PG10+) requests it as soon as a range fills; `SELECT brin_summarize_new_values('idx_events_created_brin')` does it manually.
+- **Updates and deletes kill it:** an old row updated with a new timestamp lands in a new page, widening that range's min/max until most ranges match every query. BRIN is for append-mostly data.
+- **PG14+ opclasses:** `minmax_multi_ops` (several min/max intervals per range, tolerates outliers) and `bloom_ops` (equality on unordered values) extend BRIN to less perfectly ordered columns.
+
+---
+
+## 23. Transaction Isolation Levels & Serializable Snapshot Isolation (SSI)
+
+Postgres implements three isolation levels. `READ UNCOMMITTED` is accepted but behaves as `READ COMMITTED` — dirty reads are impossible in Postgres.
+
+| Level | Snapshot | Non-repeatable read | Phantom read | Lost update / write skew |
+| ----- | -------- | ------------------- | ------------ | ------------------------ |
+| `READ COMMITTED` (default) | New snapshot per **statement** | Possible | Possible | Possible |
+| `REPEATABLE READ` | One snapshot per transaction, taken at the **first statement**, not at `BEGIN` | No | No (stricter than the SQL standard) | Lost update → error; write skew possible |
+| `SERIALIZABLE` | Same snapshot + SSI conflict tracking | No | No | No — one transaction fails instead |
+
+```sql
+SHOW default_transaction_isolation;
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+ALTER ROLE api_service SET default_transaction_isolation = 'serializable';
+```
+
+### READ COMMITTED — The Lost Update
+
+```sql
+-- Both sessions READ COMMITTED; the application computes the new value:
+-- A: SELECT balance FROM accounts WHERE id = 1;            -- 100
+-- B: SELECT balance FROM accounts WHERE id = 1;            -- 100
+-- A: UPDATE accounts SET balance = 70 WHERE id = 1; COMMIT;  -- withdraw 30
+-- B: UPDATE accounts SET balance = 50 WHERE id = 1; COMMIT;  -- withdraw 50 → final 50, A's withdrawal lost
+```
+
+When an `UPDATE`/`DELETE`/`SELECT FOR UPDATE` in `READ COMMITTED` hits a row another transaction changed, it waits for that transaction; if it commits, Postgres re-evaluates the `WHERE` clause against the **newest** row version (EvalPlanQual) and proceeds — while the rest of the statement still sees its original snapshot. Fixes, cheapest first:
+
+1. **Atomic update:** `SET balance = balance - 30` — re-evaluated against the latest version, nothing lost.
+2. **Pessimistic lock:** `SELECT ... FOR UPDATE` before computing the new value.
+3. **Optimistic check:** `UPDATE ... SET balance = 70, version = version + 1 WHERE id = 1 AND version = 7` — 0 rows updated means someone else won; reload and retry.
+4. **`REPEATABLE READ`:** B's `UPDATE` fails with `ERROR: could not serialize access due to concurrent update` (SQLSTATE `40001`); retry the transaction.
+
+### REPEATABLE READ — Write Skew
+
+Two transactions read overlapping data, then write **different** rows based on what they read. No row conflict, so `REPEATABLE READ` lets both commit:
+
+```sql
+-- Invariant: at least one doctor on call. Alice and Bob both are.
+-- T1: SELECT count(*) FROM doctors WHERE on_call;                  -- 2
+-- T2: SELECT count(*) FROM doctors WHERE on_call;                  -- 2
+-- T1: UPDATE doctors SET on_call = false WHERE name = 'alice'; COMMIT;
+-- T2: UPDATE doctors SET on_call = false WHERE name = 'bob';   COMMIT;
+-- REPEATABLE READ: both commit → nobody on call.
+-- SERIALIZABLE:    one of them fails with SQLSTATE 40001 (at UPDATE or COMMIT).
+```
+
+### SERIALIZABLE — How SSI Works
+
+SSI runs every transaction on a `REPEATABLE READ` snapshot and additionally records what each one **read** as `SIReadLock` predicate locks (they block nothing). When it detects a "dangerous structure" — two consecutive read-write dependencies between concurrent transactions, the pattern every serialization anomaly needs — it aborts one transaction with SQLSTATE `40001`. The guarantee: any set of committed serializable transactions behaves as if they ran one at a time.
+
+```sql
+-- See the predicate locks:
+SELECT pid, locktype, relation::regclass, page, tuple
+FROM pg_locks WHERE mode = 'SIReadLock';
+```
+
+Production rules:
+
+- **Retry is mandatory, not optional.** Any statement, including `COMMIT`, can fail with `40001` (or `40P01`, deadlock). Retry the **whole** transaction from `BEGIN`, re-running its reads — never just the failed statement.
+
+  ```
+  for attempt in 1..5:
+      try:
+          BEGIN ISOLATION LEVEL SERIALIZABLE
+          ... all reads and writes ...
+          COMMIT
+          return
+      except SQLSTATE in ('40001', '40P01'):
+          ROLLBACK
+          sleep(random jitter × attempt)
+  raise
+  ```
+
+- **False positives come from coarse locks.** A sequential scan takes a relation-level SIRead lock, which conflicts with any write to the table. Indexes on the columns you filter by keep locks at tuple/page level. When a transaction holds too many tuple locks they are promoted to page, then relation level (`max_pred_locks_per_transaction`, default 64; `max_pred_locks_per_relation`; `max_pred_locks_per_page`).
+- **Keep transactions short** — SIRead locks outlive the commit until every overlapping transaction finishes.
+- **Long reports:** `BEGIN ISOLATION LEVEL SERIALIZABLE READ ONLY DEFERRABLE;` waits for a snapshot that is guaranteed safe, then runs with no SSI tracking and can never fail with `40001`.
+- **All participants must be `SERIALIZABLE`.** A `READ COMMITTED` writer is invisible to SSI's checks.
+- **Not available on hot standbys** — use `REPEATABLE READ` there.
+
+**Sharing a snapshot across sessions:** `SELECT pg_export_snapshot();` in one `REPEATABLE READ` transaction, then `SET TRANSACTION SNAPSHOT '<id>';` in others — every session sees exactly the same data. This is how `pg_dump -j` produces a consistent parallel dump.
+
+---
+
+## 24. WAL & Checkpoint Internals
+
+Section 6 covers the write-ahead rule and why replication reads WAL. This section is about measuring and tuning it.
+
+### WAL on Disk and LSNs
+
+WAL lives in `pg_wal/` as 16MB **segment** files (size fixed at `initdb --wal-segsize`). The 24-hex-digit name is timeline + log + segment: `000000010000003A0000007C` = timeline 1, segment `3A/7C`.
+
+An **LSN** (Log Sequence Number) is a 64-bit byte position in the WAL stream, printed as `high/low` in hex (`3A/7C0012F8`). Subtracting two LSNs gives bytes — the basis for replication lag, slot retention, and WAL-rate measurements.
+
+```sql
+SELECT pg_current_wal_lsn(), pg_walfile_name(pg_current_wal_lsn());
+
+-- WAL generated by a workload (psql):
+SELECT pg_current_wal_lsn() AS before \gset
+-- ... run the workload ...
+SELECT pg_size_pretty(pg_current_wal_lsn() - :'before'::pg_lsn);
+
+-- WAL generated by one statement (PG13+):
+EXPLAIN (ANALYZE, WAL) UPDATE anomaly_routes SET status = 'DONE' WHERE city_id = 5;
+--   WAL: records=1002 fpi=37 bytes=356120
+
+-- Cluster-wide WAL counters (PG14+); per-query: pg_stat_statements.wal_bytes / wal_fpi (PG13+)
+SELECT wal_records, wal_fpi, pg_size_pretty(wal_bytes) AS wal_bytes, wal_buffers_full
+FROM pg_stat_wal;
+```
+
+`wal_buffers_full` climbing steadily = `wal_buffers` too small for the write burst rate (see section 5).
+
+Inspecting raw records — what is actually filling WAL:
+
+```bash
+# Per record type: counts, bytes, full-page-image share
+pg_waldump --stats=record -p "$PGDATA/pg_wal" 000000010000003A0000007C
+```
+
+```sql
+-- Same from SQL (PG15+):
+CREATE EXTENSION pg_walinspect;
+SELECT * FROM pg_get_wal_stats('3A/7C000000', '3A/7D000000', true)
+ORDER BY combined_size DESC LIMIT 10;
+```
+
+### Full-Page Images — The Hidden WAL Multiplier
+
+After each checkpoint, the **first** change to every page writes the whole 8KB page into WAL (a full-page image, FPI), so crash recovery can repair a torn page. A one-byte update can cost 8KB of WAL. Consequences:
+
+- **WAL volume spikes right after every checkpoint**, then decays. More frequent checkpoints = more FPIs.
+- **Random-key inserts multiply FPIs.** A random UUIDv4 primary key touches a different B-tree leaf page on every insert, so most inserts dirty a "fresh" page and log an FPI. Time-ordered keys (`bigint` identity, UUIDv7 — `uuidv7()` built in from PG18) keep inserts on the rightmost pages.
+- **`wal_compression`** compresses FPIs only: `on`/`pglz`, or `lz4` / `zstd` (PG15+). Usually a large WAL reduction for little CPU — worth enabling on write-heavy systems.
+- **Never set `full_page_writes = off`** unless the filesystem guarantees atomic 8KB writes (e.g. ZFS). A crash mid-write then means silent corruption.
+
+### Checkpoints — Mechanics and Tuning
+
+```
+Checkpoint:
+  1. Record the redo point (current WAL position) — recovery starts replaying here
+  2. Write every dirty buffer, throttled to finish within
+     checkpoint_completion_target × checkpoint_timeout
+  3. fsync the data files
+  4. Write the checkpoint record and update pg_control
+  5. Remove or recycle WAL segments older than the redo point
+     (unless held by replication slots, failed archiving, or wal_keep_size)
+```
+
+Triggers: **timed** (`checkpoint_timeout` elapsed), **requested** (WAL since the last checkpoint reached roughly `max_wal_size / (1 + checkpoint_completion_target)`), manual `CHECKPOINT`, shutdown, and base backup start. Timed checkpoints are spread out and predictable; requested ones mean WAL outran `max_wal_size` — more frequent checkpoints, more FPIs, more I/O spikes.
+
+```sql
+-- PG17+:
+SELECT num_timed, num_requested,
+       round(100.0 * num_requested / nullif(num_timed + num_requested, 0), 1) AS pct_requested,
+       write_time, sync_time, buffers_written
+FROM pg_stat_checkpointer;
+
+-- PG16 and older:
+SELECT checkpoints_timed, checkpoints_req, checkpoint_write_time, checkpoint_sync_time, buffers_checkpoint
+FROM pg_stat_bgwriter;
+```
+
+Target: well over 90% timed. If not:
+
+1. Measure WAL produced per `checkpoint_timeout` at peak (LSN difference over that interval).
+2. Set `max_wal_size` to at least ~2× that, so the size trigger isn't reached before the timer.
+3. Watch the log: `log_checkpoints` (default on since PG15) prints buffers written, write/sync time, and `distance`/`estimate` (WAL between checkpoints); `checkpoints are occurring too frequently` appears when they are under `checkpoint_warning` (30s) apart.
+
+The trade-off: crash recovery replays all WAL since the last redo point, so a larger `max_wal_size` and longer `checkpoint_timeout` mean longer recovery. 15–30 min with enough `max_wal_size` is typical for OLTP.
+
+On a standby, checkpoints are **restartpoints**, only possible at checkpoint records replayed from the primary — a standby can't checkpoint more often than its primary.
+
+### Why `pg_wal` Keeps Growing
+
+WAL older than the last redo point is removed at the next checkpoint **unless** something still needs it:
+
+- An inactive or lagging **replication slot** (`pg_replication_slots`, cap with `max_slot_wal_keep_size`)
+- A failing `archive_command` (`pg_stat_archiver.failed_count`, `last_failed_wal`)
+- `wal_keep_size`
+- Write bursts above `max_wal_size` (soft limit — it is exceeded under load, then shrinks)
+
+See section 13 for the incident playbook. Never delete files from `pg_wal` by hand.
+
+---
+
+## 25. Security — Roles, Privileges, and Row-Level Security
+
+### Roles
+
+Users and groups are the same object: a **role**. A role with `LOGIN` is a user; a role others are members of is a group. Members inherit the group's privileges (`INHERIT`, the default) or can `SET ROLE` to it.
+
+Production layout — privileges live on `NOLOGIN` group roles, login roles only get memberships:
+
+```sql
+CREATE ROLE app_owner NOLOGIN;   -- owns schema and tables; migrations run as this
+CREATE ROLE app_rw    NOLOGIN;   -- application read/write
+CREATE ROLE app_ro    NOLOGIN;   -- analysts, reporting
+
+CREATE ROLE migrator    LOGIN PASSWORD '...' IN ROLE app_owner;
+CREATE ROLE api_service LOGIN PASSWORD '...' IN ROLE app_rw;
+CREATE ROLE analyst     LOGIN PASSWORD '...' IN ROLE app_ro;
+
+REVOKE ALL ON DATABASE mydb FROM PUBLIC;
+GRANT CONNECT ON DATABASE mydb TO app_owner, app_rw, app_ro;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;   -- default since PG15; run it on older clusters
+
+CREATE SCHEMA app AUTHORIZATION app_owner;
+GRANT USAGE ON SCHEMA app TO app_rw, app_ro;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA app TO app_rw;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA app TO app_rw;
+GRANT SELECT ON ALL TABLES IN SCHEMA app TO app_ro;
+```
+
+Migrations should start with `SET ROLE app_owner;` — otherwise new tables are owned by `migrator`: default privileges (below) don't apply to them, and dropping or rotating that login role needs `REASSIGN OWNED` first.
+
+### Default Privileges — The "New Table Is Invisible" Bug
+
+`GRANT ... ON ALL TABLES IN SCHEMA` affects **existing** tables only. Future tables need default privileges, and those apply only to objects created by the role named in `FOR ROLE`:
+
+```sql
+ALTER DEFAULT PRIVILEGES FOR ROLE app_owner IN SCHEMA app
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rw;
+ALTER DEFAULT PRIVILEGES FOR ROLE app_owner IN SCHEMA app
+    GRANT USAGE ON SEQUENCES TO app_rw;
+ALTER DEFAULT PRIVILEGES FOR ROLE app_owner IN SCHEMA app
+    GRANT SELECT ON TABLES TO app_ro;
+```
+
+Classic incident: a migration runs as a different role than `FOR ROLE`, the new table gets no grants, and the deploy fails with `permission denied for table ...`. Check with `\ddp`.
+
+```sql
+\du                                     -- roles and memberships
+\dp app.*                               -- table/column privileges (ACLs)
+SELECT has_table_privilege('api_service', 'app.orders', 'UPDATE');
+
+-- Column-level grants (SELECT * then fails for this role — list the columns):
+GRANT SELECT (id, email, created_at) ON app.users TO support;
+```
+
+**Predefined roles** replace most reasons to hand out superuser: `pg_monitor` (monitoring agents), `pg_read_all_data` / `pg_write_all_data` (PG14+), `pg_signal_backend` (cancel/terminate non-superuser queries), `pg_checkpoint` (PG15+), `pg_maintain` (PG17+: `VACUUM`, `ANALYZE`, `REINDEX`, `CLUSTER`, `REFRESH MATERIALIZED VIEW`, `LOCK TABLE` on all relations).
+
+**The application never connects as a superuser or as the table owner.** Superusers bypass every check; owners can `DROP`/`ALTER` their tables and bypass row-level security by default.
+
+### Row-Level Security (RLS)
+
+RLS adds a per-row filter to every query on a table — the standard way to enforce tenant isolation in the database instead of trusting every `WHERE tenant_id = ?` in application code.
+
+```sql
+ALTER TABLE app.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.orders FORCE ROW LEVEL SECURITY;   -- apply to the table owner too
+
+CREATE POLICY tenant_isolation ON app.orders
+    USING      (tenant_id = nullif(current_setting('app.tenant_id', true), '')::bigint)  -- rows you can see/update/delete
+    WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::bigint); -- rows you can write
+
+-- Per request, inside the transaction (safe with PgBouncer transaction pooling, see section 7):
+BEGIN;
+SET LOCAL app.tenant_id = '42';
+SELECT * FROM app.orders;   -- only tenant 42's rows
+COMMIT;
+```
+
+`current_setting(..., true)` returns NULL when unset (and `''` after a `SET LOCAL` has ended), and `nullif` turns both into NULL — so a missing tenant sees **zero rows** instead of erroring or leaking.
+
+Rules that bite:
+
+- **Default deny:** RLS enabled with no policy for a command = no rows visible or writable.
+- **Combining policies:** permissive policies (default) are OR'ed; `AS RESTRICTIVE` policies are AND'ed on top. Scope with `FOR SELECT | INSERT | UPDATE | DELETE` and `TO role`.
+- **Who bypasses:** superusers, roles with `BYPASSRLS`, and the table owner unless `FORCE ROW LEVEL SECURITY`.
+- **Views bypass the caller's RLS:** a view runs with its **owner's** privileges, so it sees whatever the owner sees. PG15+: `CREATE VIEW ... WITH (security_invoker = true)` makes it run as the caller.
+- **Performance:** the policy becomes an extra `WHERE` clause on every query — make `tenant_id` the leading column of the hot indexes. User-supplied conditions using functions not marked `LEAKPROOF` are evaluated after the policy filter, which can prevent using an index for them; check `EXPLAIN`.
+- **Backups:** `pg_dump` sets `row_security = off`, so it errors instead of silently dumping a filtered subset when the dumping role is subject to RLS — dump as the owner or a `BYPASSRLS` role.
+
+### SECURITY DEFINER Functions
+
+A `SECURITY DEFINER` function runs with its **owner's** privileges — a controlled privilege escalation. Two defaults make it dangerous:
+
+```sql
+CREATE FUNCTION app.deactivate_user(p_id bigint) RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp   -- without this, a caller can shadow tables/functions via their search_path
+AS $$ UPDATE app.users SET active = false WHERE id = p_id $$;
+
+REVOKE EXECUTE ON FUNCTION app.deactivate_user(bigint) FROM PUBLIC;   -- functions are executable by PUBLIC by default
+GRANT EXECUTE ON FUNCTION app.deactivate_user(bigint) TO app_rw;
+```
+
+Schema-qualify every object inside the body, and keep `pg_temp` last in its `search_path` so temporary objects can't hijack it.
+
+### Authentication
+
+- `pg_hba.conf` is matched **top to bottom, first match wins** — a broad `trust` or `host all all 0.0.0.0/0` line above a strict one silently wins. `SELECT * FROM pg_hba_file_rules;` shows the parsed rules and any errors before you reload.
+- Use `scram-sha-256` (default `password_encryption` since PG14). MD5 passwords are deprecated (PG18 warns). After switching, users must reset their passwords to store SCRAM hashes.
+- Use `hostssl` lines to require TLS for remote connections; `host` accepts both.
+- Audit: `log_connections`, `log_disconnections`, and the `pgaudit` extension for statement-level audit logs (DDL, role changes, reads of sensitive tables).
+
+---
+
 ## What Separates God-Level from Expert-Level
 
 You can learn everything in this document. What you can't learn from a document:
