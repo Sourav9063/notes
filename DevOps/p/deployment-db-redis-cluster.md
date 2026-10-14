@@ -12,18 +12,29 @@ We are currently using an approach where the `.env` file is generated during the
 2. **Docker Build:** `COPY . .` in the `Dockerfile` copies the `.env` into the image.
 3. **Runtime:** Next.js reads environment variables directly from this file at startup.
 
+**Risk:** anyone who can pull the image can read every value in `.env`, including DB and Redis passwords. Old image layers keep old values even after rotation. Safer option: keep only build-time `NEXT_PUBLIC_*` values in the image, and load server secrets at runtime from a Kubernetes Secret through `envFrom` in the Helm chart.
+
 ## Setting up In-Cluster Databases for Staging
 
-To set up the in-cluster dependencies for the staging environment, you can use Bitnami's official Helm charts directly in your staging Kubernetes cluster:
+To set up the in-cluster dependencies for the staging environment, you can use Bitnami's official Helm charts directly in your staging Kubernetes cluster.
+
+Bitnami changed distribution in 2025:
+
+- Charts are published as OCI artifacts. Old `https://charts.bitnami.com/bitnami` repo now redirects to a frozen index.
+- Free `docker.io/bitnami/*` images now publish only `latest`. Versioned Debian images moved to `docker.io/bitnamilegacy/*`, which gets no updates.
+
+Effects:
+
+- Charts from old repo reference versioned tags that no longer exist, so Pods hit `ImagePullBackOff`.
+- Current OCI charts default to `latest` images. Pulls work, but `latest` can jump Postgres major version; new major cannot start on old data directory. Pin image by digest (`--set image.digest=sha256:...`) once staging works.
+- Alternative: pin legacy image, e.g. `--set image.repository=bitnamilegacy/postgresql --set image.tag=17.6.0-debian-12-r4 --set global.security.allowInsecureImages=true`. Charts reject substituted images without last flag. Legacy images get no security fixes.
 
 **1. Install PostgreSQL:**
 
 ```bash
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
-
-helm install mapsense-db bitnami/postgresql \
+helm install mapsense-db oci://registry-1.docker.io/bitnamicharts/postgresql \
   --namespace mapsense \
+  --create-namespace \
   --set auth.postgresPassword=YourStagingPassword \
   --set auth.database=mapsense_db
 ```
@@ -31,8 +42,9 @@ helm install mapsense-db bitnami/postgresql \
 **2. Install Redis:**
 
 ```bash
-helm install mapsense-cache bitnami/redis \
+helm install mapsense-cache oci://registry-1.docker.io/bitnamicharts/redis \
   --namespace mapsense \
+  --create-namespace \
   --set architecture=standalone \
   --set auth.password=YourStagingRedisPassword
 ```

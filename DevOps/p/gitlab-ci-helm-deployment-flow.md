@@ -77,6 +77,8 @@ Purpose:
 - calculates short commit SHA for image tags.
 - converts branch names like `feature/x` to `feature-x` so image tags stay valid.
 
+`sed "s/\//-/"` has no `g` flag, so it replaces only first `/`. `feature/a/b` becomes `feature-a/b`, which is invalid image tag. `sed "s/\//-/g"` would replace all.
+
 SSH clone code is commented out because GitLab's normal checkout is being used.
 
 ## Environment Setup Blocks
@@ -258,6 +260,8 @@ Step-by-step:
 4. Initializes Helm client mode.
 5. Runs `helm upgrade --install`.
 
+`helm init` and `--stable-repo-url` exist only in Helm 2, so CI deploys with Helm 2 (Tiller). Helm 3 removed `helm init`.
+
 `upgrade --install` means:
 
 - if release exists, update it.
@@ -318,6 +322,16 @@ Without this secret, pod can fail with `ImagePullBackOff` or `ErrImagePull`.
 ## Manual Deploy Without GitLab CI
 
 Use this path when GitLab CI is down or manual recovery is needed.
+
+Warning: commands below use Helm 3+, but CI uses Helm 2. Helm 2 stores releases through Tiller; Helm 3+ cannot see them. If `mapsense-release` was created by CI, Helm 3+ `upgrade --install` tries fresh install and fails on existing resources, and `helm history`/`helm rollback` show nothing. Either use same Helm 2 client as CI, or migrate release once with `helm-2to3` plugin. Check which Helm owns release first:
+
+```sh
+# Helm 3+ release, stored as Secret in app namespace.
+kubectl get secret -n mapsense -l owner=helm,name=mapsense-release
+
+# Helm 2 release, stored as ConfigMap in Tiller namespace.
+kubectl get configmap -n kube-system -l OWNER=TILLER,NAME=mapsense-release
+```
 
 Assumptions:
 
@@ -456,7 +470,7 @@ helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_LOCATION}" \
   --set imgPullSecret="${IMAGE_PULL_SECRET}"
 ```
 
-If Helm version is old and namespace does not exist, create namespace first with `kubectl create namespace mapsense`.
+Helm 3+ does not create missing namespaces. Create it first with `kubectl create namespace mapsense`, or add `--create-namespace`.
 
 ### 6. Verify Deploy
 

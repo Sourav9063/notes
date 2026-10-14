@@ -71,7 +71,7 @@ Port
   Number where a network service listens. SSH uses 22, HTTP uses 80, HTTPS uses 443.
 
 Firewall
-  Rules deciding which ports/IPs can connect. In this setup there are two firewalls: Oracle cloud firewall and Ubuntu UFW.
+  Rules deciding which ports/IPs can connect. In this setup there are two firewalls: Oracle cloud firewall and Ubuntu iptables.
 
 SSH
   Secure shell login to server. Uses private key on your computer and public key on server.
@@ -119,7 +119,7 @@ Example: browser calls `https://stream.example.com/health`.
 2. DNS returns Oracle public IP.
 3. Browser connects to Oracle public IP on port 443.
 4. OCI Security List/NSG allows 443.
-5. Ubuntu UFW allows 443.
+5. Ubuntu iptables allows 443.
 6. ingress-nginx receives HTTPS request.
 7. ingress-nginx checks Kubernetes Ingress rules.
 8. Matching rule says stream.example.com -> Service stream-api.
@@ -131,13 +131,13 @@ This is why app ports like `4000` do not need to be public. Public traffic enter
 
 ### 0.3 Why Two Firewalls
 
-Oracle firewall protects server before traffic reaches Linux. UFW protects inside Linux.
+Oracle firewall protects server before traffic reaches Linux. iptables protects inside Linux.
 
 Use both:
 
 ```txt
 OCI NSG/Security List = cloud edge protection
-UFW = server-level protection
+iptables = server-level protection
 ```
 
 If port is blocked in either one, request fails.
@@ -184,6 +184,8 @@ k3s
 
 This avoids Caddy magic and teaches actual Kubernetes networking.
 
+Note: Kubernetes retired ingress-nginx. Maintenance ended March 2026; there are no further releases or security fixes, but existing installs and install artifacts keep working. Pin chart version and plan Gateway API migration later. Official notice: https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
+
 ### 1.2 Target Architecture
 
 ```txt
@@ -195,7 +197,7 @@ Oracle public IP
   |
 OCI Network Security Group or Security List
   |
-Ubuntu UFW firewall
+Ubuntu iptables firewall
   |
 k3s node
   |
@@ -471,50 +473,69 @@ If SSH config is wrong, new login may fail.
 Old session lets you fix config instead of losing server access.
 ```
 
-### 2.5 UFW Firewall
+### 2.5 Host Firewall (iptables)
 
-Install and enable:
+Do not use UFW on Oracle Ubuntu images. Oracle documents that UFW may remove preconfigured rules the instance needs to reach its boot volume, so the instance can fail to reboot.
+
+Official docs:
+
+- Oracle known issue: https://docs.oracle.com/en-us/iaas/Content/Compute/known-issues.htm
+- Essential firewall rules: https://docs.oracle.com/en-us/iaas/Content/Compute/References/bestpracticescompute.htm
+
+Oracle images already ship a default-deny iptables firewall in `/etc/iptables/rules.v4`. It allows SSH, then rejects other incoming traffic. Add rules to that file instead.
+
+Install brute-force protection and automatic security updates:
 
 ```bash
-# Install host firewall, brute-force protection, and automatic security updates.
-sudo apt install -y ufw fail2ban unattended-upgrades
-
-# Block incoming connections unless explicitly allowed.
-sudo ufw default deny incoming
-
-# Allow server to make outbound requests.
-# Needed for package downloads, Docker pulls, Let's Encrypt, APIs.
-sudo ufw default allow outgoing
-
-# Allow SSH. Do this before enabling UFW or you may lock yourself out.
-sudo ufw allow 22/tcp
-
-# Allow HTTP. Needed for Let's Encrypt HTTP-01 challenge and redirects.
-sudo ufw allow 80/tcp
-
-# Allow HTTPS. Main public traffic enters here.
-sudo ufw allow 443/tcp
-
-# Enable firewall interactively.
-sudo ufw enable
-
-# Show active firewall rules.
-sudo ufw status verbose
+sudo apt install -y fail2ban unattended-upgrades
 ```
 
-If you expose Kubernetes API to your own IP:
+Edit rules file:
 
 ```bash
+sudo nano /etc/iptables/rules.v4
+```
+
+Add these lines directly after existing `--dport 22` ACCEPT line, before first `REJECT` line:
+
+```txt
+# Allow HTTP. Needed for Let's Encrypt HTTP-01 challenge.
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT
+# Allow HTTPS. Main public traffic enters here.
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT
+# Allow k3s Pod network (10.42.0.0/16) and Service network (10.43.0.0/16) to reach host.
+# Without these, Pods cannot reach Kubernetes API and cluster DNS breaks.
+-A INPUT -s 10.42.0.0/16 -j ACCEPT
+-A INPUT -s 10.43.0.0/16 -j ACCEPT
+```
+
+Do not remove existing `InstanceServices` rules. They keep boot and block volume access working.
+
+Apply:
+
+```bash
+# Load rules file now. File is also loaded on every boot.
+# This replaces live filter rules, so run it before installing k3s/Docker,
+# or restart k3s/Docker afterwards so they recreate their own rules.
+sudo sh -c 'iptables-restore < /etc/iptables/rules.v4'
+
+# Show active INPUT rules with line numbers.
+sudo iptables -L INPUT -n --line-numbers
+```
+
+If you expose Kubernetes API to your own IP, add before `REJECT` line:
+
+```txt
 # Only your IP can reach Kubernetes API server.
 # Never expose 6443 to the full internet.
-sudo ufw allow from YOUR_HOME_IP to any port 6443 proto tcp
+-A INPUT -p tcp -s YOUR_HOME_IP -m tcp --dport 6443 -j ACCEPT
 ```
 
 What these tools do:
 
 ```txt
-ufw
-  Simple Linux firewall frontend.
+iptables
+  Linux kernel firewall rules. Oracle images load /etc/iptables/rules.v4 at boot.
 
 fail2ban
   Watches logs and bans repeated failed login attempts.
@@ -678,7 +699,7 @@ kubectl apply -f deployment.yaml
 ```bash
 # Download official Helm installer script and run it.
 # Helm is package manager for Kubernetes, like apt for cluster apps.
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
 
 # Confirm Helm installed and can run.
 helm version
@@ -1140,7 +1161,7 @@ EXPOSE 4000
 CMD ["node", "server.js"]
 ```
 
-For Next.js standalone backend:
+For Next.js standalone backend, first set `output: 'standalone'` in `next.config`:
 
 ```dockerfile
 # Install dependencies.
@@ -1149,36 +1170,46 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Build Next.js app.
+# Build Next.js app. Standalone output goes to .next/standalone.
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# Runtime image.
+# Runtime image. Standalone output already bundles only needed node_modules.
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/.next ./.next
+# Listen on all interfaces inside container, not only localhost.
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+# Standalone output does not include static assets; copy them separately.
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 USER node
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
 ```
 
 Add `.dockerignore`:
 
 ```txt
-node_modules          # installed locally; image installs fresh deps
-.next                 # local build output; image builds its own
-.git                  # git history not needed in image
-.env*                 # never copy secrets into image
-npm-debug.log         # local debug files not needed
-Dockerfile            # optional; not needed at runtime
-docker-compose.yml    # optional; not needed at runtime
+# Comments must be on their own line. Text after a pattern becomes part of the pattern.
+# Installed locally; image installs fresh deps.
+node_modules
+# Local build output; image builds its own.
+.next
+# Git history not needed in image.
+.git
+# Never copy secrets into image.
+.env*
+# Local debug files not needed.
+npm-debug.log
+# Optional; not needed at runtime.
+Dockerfile
+docker-compose.yml
 ```
 
 Why `.dockerignore` matters:
@@ -1225,16 +1256,14 @@ Avoid deploying only `latest` for serious services. Pin deployments to git SHA w
 
 ### 7.2 Manual Deploy First
 
-Build locally or in GitHub Actions:
+Build locally or in GitHub Actions. Oracle A1 is ARM64; images built on x86 machines or default GitHub runners are amd64 and fail with `exec format error`.
 
 ```bash
-# Build image from current directory Dockerfile.
+# Build ARM64 image from current directory Dockerfile and push it.
+# --platform linux/arm64 matches Oracle Ampere A1 CPU.
 # -t assigns image name/tag.
-docker build -t ghcr.io/YOUR_USER/stream-api:latest .
-
-# Upload image to GitHub Container Registry.
-# Kubernetes node will pull image from there.
-docker push ghcr.io/YOUR_USER/stream-api:latest
+# --push uploads image to GitHub Container Registry; Kubernetes node pulls it from there.
+docker buildx build --platform linux/arm64 -t ghcr.io/YOUR_USER/stream-api:latest --push .
 ```
 
 On VPS:
@@ -1293,7 +1322,7 @@ push main
 -> npm ci
 -> npm run lint
 -> npm run build
--> docker build
+-> docker buildx build --platform linux/arm64 (VPS is ARM64)
 -> docker push ghcr.io
 -> ssh to VPS
 -> kubectl set image
@@ -2130,7 +2159,7 @@ kubectl get ingress -A
 kubectl get svc -n ingress-nginx
 
 # Check Linux firewall rules.
-sudo ufw status
+sudo iptables -L INPUT -n --line-numbers
 ```
 
 Likely causes:
@@ -2138,7 +2167,7 @@ Likely causes:
 ```txt
 DNS A record wrong
 OCI port 80/443 closed
-UFW port 80/443 closed
+iptables port 80/443 closed
 ingress-nginx not running
 Ingress host mismatch
 ```
@@ -2311,7 +2340,7 @@ If internal works but public fails:
 Ingress problem
 DNS problem
 TLS/certificate problem
-OCI/UFW firewall problem
+OCI/iptables firewall problem
 ```
 
 ## 16. When To Add More Kubernetes Complexity
@@ -2376,7 +2405,7 @@ Internet
 -> DNS
 -> Oracle public IP
 -> OCI NSG/Security List
--> UFW
+-> iptables
 -> Caddy :80/:443
 -> Docker network
 -> Node containers
@@ -2592,7 +2621,7 @@ If Kubernetes becomes too much, switch production services to Compose but keep k
 
 1. Create Oracle A1 VPS with Ubuntu ARM64, 4 OCPU / 24 GB if possible.
 2. Reserve public IP and point test domain to it.
-3. Harden SSH, UFW, fail2ban.
+3. Harden SSH, iptables, fail2ban.
 4. Install k3s with Traefik disabled.
 5. Install Helm.
 6. Install ingress-nginx.
