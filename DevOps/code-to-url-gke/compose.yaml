@@ -1,0 +1,45 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+      - "9464:9464"
+    environment:
+      DATABASE_URL: postgres://shop_api:local-password@postgres:5432/shop
+      UPLOAD_BUCKET: acme-shop-dev-uploads
+      LOG_LEVEL: debug
+      CORS_ORIGINS: http://localhost:3000
+      # Point at your identity provider's dev tenant/realm to test signed-in routes locally.
+      OIDC_ISSUER: https://auth.example.com/
+      OIDC_AUDIENCE: https://api.example.com
+      OIDC_JWKS_URL: https://auth.example.com/.well-known/jwks.json
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    build: .
+    command: ["node", "node_modules/node-pg-migrate/bin/node-pg-migrate.js", "up", "-m", "migrations"]
+    environment:
+      DATABASE_URL: postgres://shop_api:local-password@postgres:5432/shop
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: shop_api
+      POSTGRES_PASSWORD: local-password
+      POSTGRES_DB: shop
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop_api -d shop"]
+      interval: 2s
+      retries: 30
+
+volumes:
+  pgdata:

@@ -1,0 +1,15 @@
+# Dependencies and build output are recreated inside the image.
+node_modules
+dist
+# Secrets and local files.
+.env*
+*.log
+# Not needed to build the image.
+.git
+.github
+test
+chart
+k8s
+infra
+compose.yaml
+Dockerfile

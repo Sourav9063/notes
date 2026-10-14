@@ -1,0 +1,36 @@
+# Local kind cluster (section 10.10). No Google Cloud services involved.
+
+image:
+  repository: shop-api
+  tag: local
+  # Image is loaded into kind with `kind load docker-image`; never pull.
+  pullPolicy: Never
+
+replicaCount: 1
+
+serviceAccount:
+  gcpServiceAccount: ""
+
+env:
+  LOG_LEVEL: debug
+  UPLOAD_BUCKET: local-uploads
+  CORS_ORIGINS: http://localhost:3000
+
+cloudSqlProxy:
+  enabled: false
+
+externalSecret:
+  enabled: false
+
+autoscaling:
+  enabled: false
+
+podDisruptionBudget:
+  minAvailable: 0
+
+ingress:
+  host: api.localtest.me
+  clusterIssuer: ""
+
+podMonitoring:
+  enabled: false

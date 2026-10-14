@@ -1,0 +1,49 @@
+{{- if .Values.migrations.enabled }}
+# Runs database migrations on every install/upgrade.
+# post-install: first install needs the Secret and ServiceAccount created by this release.
+# pre-upgrade: later releases migrate before new Pods start.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "shop-api.name" . }}-migrate
+  labels:
+    {{- include "shop-api.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    # Delete old Job before creating a new one; delete on success; keep failed Job for debugging.
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        {{- include "shop-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      restartPolicy: Never
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if .Values.cloudSqlProxy.enabled }}
+      initContainers:
+        {{- include "shop-api.cloudSqlProxy" . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "shop-api.image" . }}
+          command: ["node", "node_modules/node-pg-migrate/bin/node-pg-migrate.js", "up", "-m", "migrations"]
+          envFrom:
+            - secretRef:
+                name: {{ include "shop-api.secretName" . }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            {{- include "shop-api.containerSecurityContext" . | nindent 12 }}
+{{- end }}

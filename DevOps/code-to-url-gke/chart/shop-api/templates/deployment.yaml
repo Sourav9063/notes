@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shop-api.name" . }}
+  labels:
+    {{- include "shop-api.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "shop-api.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Start a new Pod before removing an old one: zero-downtime rollout.
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "shop-api.labels" . | nindent 8 }}
+      annotations:
+        # Changing the ConfigMap changes this hash, which restarts Pods.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # Spread replicas across zones, then across nodes.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "shop-api.selectorLabels" . | nindent 14 }}
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "shop-api.selectorLabels" . | nindent 14 }}
+      {{- if .Values.cloudSqlProxy.enabled }}
+      initContainers:
+        {{- include "shop-api.cloudSqlProxy" . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: shop-api
+          image: {{ include "shop-api.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.ports.http }}
+            - name: metrics
+              containerPort: {{ .Values.ports.metrics }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "shop-api.name" . }}
+            - secretRef:
+                name: {{ include "shop-api.secretName" . }}
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              # Keep serving while endpoint removal propagates to ingress-nginx,
+              # then Kubernetes sends SIGTERM.
+              sleep:
+                seconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- include "shop-api.containerSecurityContext" . | nindent 12 }}

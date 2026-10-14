@@ -1,0 +1,121 @@
+name: ci-cd
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  REGION: asia-southeast1
+  IMAGE: asia-southeast1-docker.pkg.dev/acme-shop-prod/shop/shop-api
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - uses: azure/setup-helm@v5
+      - run: helm lint chart/shop-api --set image.tag=ci
+
+  build:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write # lets the job request a GitHub OIDC token for Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Build and load locally first, so a vulnerable image is never pushed.
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - run: docker push "${IMAGE}:${GITHUB_SHA}"
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: staging
+    concurrency: deploy-staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+      - uses: google-github-actions/get-gke-credentials@v3
+        with:
+          project_id: acme-shop-stg
+          cluster_name: shop-gke
+          location: ${{ env.REGION }}
+          use_dns_based_endpoint: true
+      - uses: azure/setup-helm@v5
+      - run: |
+          helm upgrade --install shop-api chart/shop-api \
+            --namespace shop \
+            -f chart/shop-api/values-staging.yaml \
+            --set image.tag="${GITHUB_SHA}" \
+            --rollback-on-failure --wait --timeout 10m
+
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-24.04
+    # GitHub environment with required reviewers = manual approval gate.
+    environment: production
+    concurrency: deploy-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+      - uses: google-github-actions/get-gke-credentials@v3
+        with:
+          project_id: acme-shop-prod
+          cluster_name: shop-gke
+          location: ${{ env.REGION }}
+          use_dns_based_endpoint: true
+      - uses: azure/setup-helm@v5
+      - run: |
+          helm upgrade --install shop-api chart/shop-api \
+            --namespace shop \
+            --set image.tag="${GITHUB_SHA}" \
+            --rollback-on-failure --wait --timeout 10m

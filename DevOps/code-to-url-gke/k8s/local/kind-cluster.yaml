@@ -1,0 +1,15 @@
+# Local Kubernetes in Docker. ingress-nginx binds node ports 80/443, mapped to localhost:8088/8443.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: shop
+nodes:
+  - role: control-plane
+    labels:
+      ingress-ready: "true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 8088
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 8443
+        protocol: TCP

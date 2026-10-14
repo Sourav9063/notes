@@ -87,6 +87,7 @@ Open [`index.html`](index.html) for a searchable browser that renders every trac
 
 ### 🐳 DevOps
 - [Docker Cheat Sheet](DevOps/docker-cheatsheet.md) - Essential Docker commands
+- [Code to URL on Google Cloud](DevOps/code-to-url-gke.md) - Node.js app through Docker, GKE, ingress-nginx, TLS, CI/CD, and Terraform
 - [Oracle VPS for Node.js](DevOps/ORACLE_VPS_BEST_USAGE.md) - Hosting multiple Node.js services on an Always Free VPS
 - [GitLab CI and Helm Deployment](DevOps/p/gitlab-ci-helm-deployment-flow.md) - Build, publish, and deploy flow
 - [Staging Deployment with In-Cluster Postgres/Redis](DevOps/p/deployment-db-redis-cluster.md) - Staging strategy

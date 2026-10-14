@@ -1,0 +1,17 @@
+{{- if .Values.podMonitoring.enabled }}
+# Google Cloud Managed Service for Prometheus scrape config.
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: {{ include "shop-api.name" . }}
+  labels:
+    {{- include "shop-api.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "shop-api.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.podMonitoring.interval }}
+{{- end }}

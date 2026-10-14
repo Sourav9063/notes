@@ -1,0 +1,9 @@
+node_modules
+dist
+.env*
+*.log
+# Terraform working files and state (state lives in the GCS backend).
+.terraform
+*.tfstate
+*.tfstate.*
+tfplan

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: shop-api
+description: Shop API service
+type: application
+# Chart version. Bump when templates change.
+version: 0.1.0
+# Default app version; CI overrides image.tag per deploy.
+appVersion: "0.1.0"

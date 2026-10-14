@@ -1,0 +1,107 @@
+# Defaults = production. Environment files override only what differs.
+
+image:
+  repository: asia-southeast1-docker.pkg.dev/acme-shop-prod/shop/shop-api
+  # Set by CI to the git SHA. Never deploy "latest".
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Ignored when autoscaling.enabled=true (HPA owns replica count).
+replicaCount: 2
+
+serviceAccount:
+  name: shop-api
+  # Google service account this Kubernetes service account acts as (Workload Identity). Empty = no annotation.
+  gcpServiceAccount: shop-api@acme-shop-prod.iam.gserviceaccount.com
+
+# Non-secret environment variables (rendered into a ConfigMap).
+env:
+  LOG_LEVEL: info
+  STORAGE_PROVIDER: gcs
+  UPLOAD_BUCKET: acme-shop-prod-uploads
+  MAX_UPLOAD_BYTES: "10485760"
+  CORS_ORIGINS: https://app.example.com
+  # Identity provider (any OpenID Connect provider; section 3.13 lists common values).
+  OIDC_ISSUER: https://auth.example.com/
+  OIDC_AUDIENCE: https://api.example.com
+  OIDC_JWKS_URL: https://auth.example.com/.well-known/jwks.json
+
+ports:
+  http: 8080
+  metrics: 9464
+
+# Secret shop-api-secrets (DATABASE_URL) comes from Secret Manager through External Secrets.
+# Disable to create that Secret yourself (local kind cluster).
+externalSecret:
+  enabled: true
+
+database:
+  name: shop
+  user: shop_api
+  # Secret Manager secret holding the database password.
+  passwordSecret: shop-api-db-password
+  gcpProjectId: acme-shop-prod
+
+cloudSqlProxy:
+  # Disable when the database is reachable directly (local kind cluster, other clouds).
+  enabled: true
+  image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.26.0
+  # PROJECT:REGION:INSTANCE
+  instanceConnectionName: acme-shop-prod:asia-southeast1:shop-pg
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    # No CPU limit: avoids throttling; requests already reserve fair share.
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  minAvailable: 1
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.example.com
+  # cert-manager issuer for HTTPS. Empty = plain HTTP Ingress without TLS (local only).
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: shop-api-tls
+  annotations:
+    # Uploads go straight to the bucket via signed URL, so API bodies stay small.
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    # Per-client-IP rate limit, counted separately in each ingress-nginx replica:
+    # effective limit = value x controller replicas (2 => ~40 rps).
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+
+networkPolicy:
+  enabled: true
+  ingressControllerNamespace: ingress-nginx
+  # Google Cloud Managed Service for Prometheus collectors run here.
+  metricsNamespace: gmp-system
+
+podMonitoring:
+  enabled: true
+  interval: 30s
+
+migrations:
+  enabled: true
+
+# Scheduled jobs (Kubernetes CronJobs). Same image, different command.
+cronJobTimeZone: Asia/Singapore
+cronJobs:
+  - name: daily-report
+    schedule: "0 2 * * *"
+    command: ["node", "dist/jobs/daily-report.js"]

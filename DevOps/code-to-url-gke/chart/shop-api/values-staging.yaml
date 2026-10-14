@@ -1,0 +1,27 @@
+# Image comes from the production registry (values.yaml): build once, deploy the same SHA everywhere.
+
+replicaCount: 1
+
+serviceAccount:
+  gcpServiceAccount: shop-api@acme-shop-stg.iam.gserviceaccount.com
+
+env:
+  LOG_LEVEL: debug
+  UPLOAD_BUCKET: acme-shop-stg-uploads
+  CORS_ORIGINS: https://app.staging.example.com,http://localhost:3000
+  OIDC_AUDIENCE: https://api.staging.example.com
+
+database:
+  gcpProjectId: acme-shop-stg
+
+cloudSqlProxy:
+  instanceConnectionName: acme-shop-stg:asia-southeast1:shop-pg
+
+autoscaling:
+  enabled: false
+
+podDisruptionBudget:
+  minAvailable: 0
+
+ingress:
+  host: api.staging.example.com

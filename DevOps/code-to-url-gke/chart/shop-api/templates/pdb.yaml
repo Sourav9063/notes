@@ -1,0 +1,14 @@
+{{- if gt (int .Values.podDisruptionBudget.minAvailable) 0 }}
+# Node upgrades/drains never take the service below minAvailable Pods.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "shop-api.name" . }}
+  labels:
+    {{- include "shop-api.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "shop-api.selectorLabels" . | nindent 6 }}
+{{- end }}

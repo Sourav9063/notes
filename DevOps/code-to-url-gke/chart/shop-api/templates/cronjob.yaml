@@ -1,0 +1,54 @@
+{{- range .Values.cronJobs }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "shop-api.name" $ }}-{{ .name }}
+  labels:
+    {{- include "shop-api.labels" $ | nindent 4 }}
+spec:
+  schedule: {{ .schedule | quote }}
+  timeZone: {{ $.Values.cronJobTimeZone | quote }}
+  # Never start a run while the previous one is still going.
+  concurrencyPolicy: Forbid
+  # Skip a missed run if it cannot start within 10 minutes (e.g. cluster was down).
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: {{ .activeDeadlineSeconds | default 1800 }}
+      template:
+        metadata:
+          labels:
+            {{- include "shop-api.selectorLabels" $ | nindent 12 }}
+            app.kubernetes.io/component: cron-{{ .name }}
+        spec:
+          serviceAccountName: {{ $.Values.serviceAccount.name }}
+          restartPolicy: Never
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          {{- if $.Values.cloudSqlProxy.enabled }}
+          initContainers:
+            {{- include "shop-api.cloudSqlProxy" $ | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: job
+              image: {{ include "shop-api.image" $ }}
+              command: {{ toJson .command }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "shop-api.name" $ }}
+                - secretRef:
+                    name: {{ include "shop-api.secretName" $ }}
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  memory: 256Mi
+              securityContext:
+                {{- include "shop-api.containerSecurityContext" $ | nindent 16 }}
+{{- end }}
