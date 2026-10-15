@@ -2079,6 +2079,9 @@ controller:
       cpu: 100m
       memory: 256Mi
   config:
+    # Rate-limited clients get 429 instead of the default 503, so throttling never looks like an outage.
+    limit-req-status-code: "429"
+    limit-conn-status-code: "429"
     # JSON access logs, parsed into fields by Cloud Logging.
     log-format-escape-json: "true"
     log-format-upstream: '{"time":"$time_iso8601","remote_addr":"$remote_addr","request_id":"$req_id","host":"$host","method":"$request_method","uri":"$request_uri","status":$status,"bytes_sent":$bytes_sent,"request_time":$request_time,"upstream_response_time":"$upstream_response_time","user_agent":"$http_user_agent"}'
@@ -2099,6 +2102,8 @@ kubectl -n ingress-nginx get pods,svc
 `EXTERNAL-IP` showing `<pending>` for more than a few minutes: `kubectl -n ingress-nginx describe svc ingress-nginx-controller` events usually say the IP is in another region or already in use.
 
 Why the webhook port matters: ingress-nginx validates every Ingress through an admission webhook called by the GKE control plane. With private nodes, Google's automatic firewall rule only allows control plane -> nodes on TCP 443 and 10250. The default webhook port 8443 would time out, and every `kubectl apply` of an Ingress fails with `failed calling webhook "validate.nginx.ingress.kubernetes.io"`. Alternatives: keep 8443 and add a firewall rule from the control plane range to nodes on TCP 8443.
+
+Client IP and rate limits: per-IP limits key on `$remote_addr`. Here the passthrough LB plus `externalTrafficPolicy: Local` delivers the real client address, so no header trust is needed. If an L7 proxy, CDN, or HTTPS load balancer is ever put in front, every request arrives from the proxy's addresses and all users share one bucket: the whole site starts returning 429. Behind a proxy set `use-forwarded-headers: "true"` and `proxy-real-ip-cidr` to the proxy's ranges only (the default `0.0.0.0/0` lets any client spoof `X-Forwarded-For` and dodge limits). Before enabling limits, confirm `remote_addr` in the access logs shows real client IPs, not proxy IPs.
 
 Test the edge before any app exists:
 
@@ -2414,6 +2419,7 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: "1m"
     # Per-client-IP rate limit, counted separately in each ingress-nginx replica:
     # effective limit = value x controller replicas (2 => ~40 rps).
+    # Burst = limit-rps x limit-burst-multiplier (default 5 => 100 requests at once).
     nginx.ingress.kubernetes.io/limit-rps: "20"
 
 networkPolicy:
@@ -3448,6 +3454,14 @@ DOWNLOAD_URL=$(curl -s -G "https://$API_HOST/api/downloads" --data-urlencode "ke
   -H "Authorization: Bearer $TOKEN" | jq -r .url)
 curl -s -o cat-copy.png -w '%{http_code}\n' "$DOWNLOAD_URL"
 cmp cat.png cat-copy.png && echo identical
+
+# Rate limit trips. One curl process with many URLs reuses one connection, so it is fast enough
+# and lands on one controller replica; a loop starting one curl per request can stay under the
+# limit and make a working limiter look broken. Expect ~100 (burst) plus ~20/s of 200s, then 429s.
+curl -s -w '%{http_code}\n' $(for i in $(seq 1 300); do printf -- '-o /dev/null https://%s/healthz ' "$API_HOST"; done) \
+  | sort | uniq -c
+#  1xx 200
+#  1xx 429
 ```
 
 ### 11.4 The Full Request Journey
@@ -5196,7 +5210,12 @@ curl hangs / connection refused
   -> app keepAliveTimeout must exceed nginx upstream keepalive timeout (3.10)
 
 503 Service Temporarily Unavailable
-  -> Service has zero ready endpoints: readiness failing (DB down?) or rate limit hit (limit-rps)
+  -> Service has zero ready endpoints: readiness failing (DB down?)
+  -> or rate limit hit while limit-req-status-code is still the default 503
+
+429 Too Many Requests
+  -> per-IP limit-rps / limit-connections hit (status set in 9.3)
+  -> every user limited at once: remote_addr is a proxy IP, not the client (see client IP note in 9.3)
 
 504 Gateway Timeout
   -> request exceeded proxy-read-timeout (60s); slow query or external call

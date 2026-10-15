@@ -91,6 +91,7 @@ Open [`index.html`](index.html) for a searchable browser that renders every trac
 - [Oracle VPS for Node.js](DevOps/ORACLE_VPS_BEST_USAGE.md) - Hosting multiple Node.js services on an Always Free VPS
 - [GitLab CI and Helm Deployment](DevOps/p/gitlab-ci-helm-deployment-flow.md) - Build, publish, and deploy flow
 - [Staging Deployment with In-Cluster Postgres/Redis](DevOps/p/deployment-db-redis-cluster.md) - Staging strategy
+- [Per-IP Rate Limiting with an nginx Proxy](DevOps/p/nginx-per-ip-rate-limiting.md) - nginx in front of a Kubernetes app: real client IP, limits, safe rollout, rollback
 
 ---
 

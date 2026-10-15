@@ -84,6 +84,7 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: "1m"
     # Per-client-IP rate limit, counted separately in each ingress-nginx replica:
     # effective limit = value x controller replicas (2 => ~40 rps).
+    # Burst = limit-rps x limit-burst-multiplier (default 5 => 100 requests at once).
     nginx.ingress.kubernetes.io/limit-rps: "20"
 
 networkPolicy:
